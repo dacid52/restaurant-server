@@ -1,0 +1,863 @@
+const state = {
+  tableId: null,
+  tableKey: null,
+  table: null,
+  menuCategories: [],
+  buffetFoodCategories: [],
+  buffetDrinkCategories: [],
+  buffetPackages: [],
+  cart: [],
+  orders: [],
+  summary: null,
+  selectedCategoryId: 'all',
+  selectedBuffetPackage: null,
+  isBuffetActive: false,
+  currentTab: 'menu',
+  orderMode: null,
+  modalFood: null,
+  modalQuantity: 1,
+  socket: null,
+};
+
+const recentToasts = new Map();
+const recentSocketEvents = new Map();
+
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0,
+  }).format(Number(amount) || 0);
+}
+
+function formatTime(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDateTime(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  return date.toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+  });
+}
+
+function getUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    tableId: params.get('table_id'),
+    tableKey: params.get('key'),
+  };
+}
+
+async function fetchJson(url, options = {}) {
+  const fullUrl = url.startsWith('/api') ? getGatewayUrl() + url : url;
+  const response = await fetch(fullUrl, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+
+  const contentType = response.headers.get('content-type') || '';
+  const data = contentType.includes('application/json') ? await response.json() : null;
+
+  if (!response.ok) {
+    const message = data?.message || 'Có lỗi xảy ra';
+    throw new Error(message);
+  }
+
+  return data;
+}
+
+function getGatewayUrl() {
+  return `${window.location.protocol}//${window.location.host.replace(':3011', ':3000')}`;
+}
+
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return '';
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
+
+  const baseUrl = getGatewayUrl();
+
+  if (imageUrl.startsWith('/api/images/')) return `${baseUrl}${imageUrl}`;
+  if (imageUrl.startsWith('/image-service/uploads/')) {
+    return `${baseUrl}${imageUrl.replace('/image-service/uploads/', '/api/images/')}`;
+  }
+  if (!imageUrl.includes('/') && imageUrl.includes('.')) {
+    return `${baseUrl}/api/images/foods/${imageUrl}`;
+  }
+  return imageUrl;
+}
+
+function getAllMenuFoods() {
+  return state.menuCategories.flatMap((category) =>
+    (category.foods || []).map((food) => ({ ...food, category_name: category.name })),
+  );
+}
+
+function getAllBuffetFoods() {
+  return state.buffetFoodCategories.flatMap((category) =>
+    (category.foods || []).map((food) => ({ ...food, category_name: category.name })),
+  );
+}
+
+function findFoodById(foodId) {
+  return getAllMenuFoods().find((food) => String(food.id) === String(foodId));
+}
+
+function findBuffetFoodById(foodId) {
+  return getAllBuffetFoods().find((food) => String(food.id) === String(foodId));
+}
+
+function getPaymentStatusText(status) {
+  switch (status) {
+    case 'paid':
+      return 'Đã thanh toán';
+    case 'pending':
+    case 'waiting':
+      return 'Đang chờ thanh toán';
+    default:
+      return 'Chưa thanh toán';
+  }
+}
+
+function getPaymentStatusClass(status) {
+  switch (status) {
+    case 'paid':
+      return 'paid';
+    case 'pending':
+    case 'waiting':
+      return 'pending';
+    default:
+      return 'unpaid';
+  }
+}
+
+function getOrderStatusClass(status) {
+  switch (status) {
+    case 'Đã thanh toán':
+    case 'Hoàn thành':
+      return 'served';
+    case 'Đang chế biến':
+      return 'preparing';
+    case 'Yêu cầu thanh toán':
+    case 'Chờ xác nhận':
+    case 'Chờ chế biến':
+      return 'pending';
+    case 'Đã hủy':
+      return 'cancelled';
+    default:
+      return 'pending';
+  }
+}
+
+function updateHeader() {
+  document.getElementById('table-name').textContent = state.table?.name || '--';
+  const statusText = document.querySelector('#session-status .status-text');
+
+  if (!statusText) return;
+
+  if (state.isBuffetActive && state.selectedBuffetPackage?.name) {
+    statusText.textContent = 'Buffet đang hoạt động';
+  } else if (state.summary?.total_orders > 0) {
+    statusText.textContent = getPaymentStatusText(state.orders[0]?.payment_status || 'unpaid');
+  } else {
+    statusText.textContent = state.table?.status || 'Sẵn sàng';
+  }
+}
+
+function updateBuffetBanner() {
+  const banner = document.getElementById('buffet-banner');
+  const packageName = document.getElementById('buffet-package-name');
+
+  if (state.isBuffetActive) {
+    packageName.textContent = state.selectedBuffetPackage?.name || state.orders.find((o) => o.is_buffet)?.buffet_package_name || 'Buffet đang hoạt động';
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toastKey = `${type}:${message}`;
+  const now = Date.now();
+  const lastShownAt = recentToasts.get(toastKey) || 0;
+  if (now - lastShownAt < 2500) return;
+  recentToasts.set(toastKey, now);
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  const iconMap = {
+    success: '✓',
+    error: '✕',
+    info: 'i',
+  };
+  toast.innerHTML = `
+    <span class="toast-icon ${type}">${iconMap[type] || 'i'}</span>
+    <span class="toast-message">${message}</span>
+  `;
+
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('toast-out');
+    setTimeout(() => toast.remove(), 200);
+  }, 2800);
+}
+
+function shouldProcessSocketEvent(eventName, uniqueParts = []) {
+  const eventKey = `${eventName}:${uniqueParts.filter(Boolean).join(':')}`;
+  const now = Date.now();
+  const lastSeenAt = recentSocketEvents.get(eventKey) || 0;
+  if (now - lastSeenAt < 1500) {
+    return false;
+  }
+  recentSocketEvents.set(eventKey, now);
+  return true;
+}
+
+function renderCategories() {
+  const container = document.getElementById('categories-list');
+  if (!container) return;
+
+  const categories = [{ id: 'all', name: 'Tất cả' }, ...state.menuCategories.map((category) => ({
+    id: String(category.id),
+    name: category.name,
+  }))];
+
+  container.innerHTML = categories.map((category) => `
+    <button class="category-btn ${state.selectedCategoryId === category.id ? 'active' : ''}" onclick="selectCategory('${category.id.replace(/'/g, "\\'")}')">
+      ${category.name}
+    </button>
+  `).join('');
+}
+
+function renderMenuItem(food, isBuffet = false) {
+  const imageUrl = getImageUrl(food.image_url);
+  const imageHtml = imageUrl
+    ? `<img src="${imageUrl}" alt="${food.name}" onerror="this.parentElement.innerHTML='<div class=\'menu-item-image-placeholder\'>📷</div>'">`
+    : `<div class="menu-item-image-placeholder">📷</div>`;
+
+  return `
+    <div class="menu-item-card" onclick="openFoodModal('${String(food.id)}', ${isBuffet})">
+      <div class="menu-item-image">${imageHtml}</div>
+      <div class="menu-item-info">
+        <h4 class="menu-item-name">${food.name}</h4>
+        ${food.category_name ? `<p class="menu-item-desc">${food.category_name}</p>` : ''}
+        <p class="menu-item-price">${isBuffet && state.isBuffetActive ? 'MIỄN PHÍ' : formatCurrency(food.price)}</p>
+      </div>
+    </div>
+  `;
+}
+
+function renderMenuItems() {
+  const container = document.getElementById('menu-items');
+  if (!container) return;
+
+  const searchQuery = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
+  const categories = state.menuCategories.map((category) => ({
+    ...category,
+    foods: (category.foods || []).filter((food) => {
+      const matchesSearch = !searchQuery || food.name.toLowerCase().includes(searchQuery);
+      const matchesCategory = state.selectedCategoryId === 'all' || String(category.id) === String(state.selectedCategoryId);
+      return matchesSearch && matchesCategory;
+    }),
+  })).filter((category) => category.foods.length > 0);
+
+  if (categories.length === 0) {
+    container.innerHTML = '<div class="empty-state"><p class="empty-title">Không tìm thấy món</p><p class="empty-desc">Thử từ khóa khác</p></div>';
+    return;
+  }
+
+  container.innerHTML = categories.map((category) => `
+    <div class="category-section">
+      <h3 class="category-section-title">${category.name}</h3>
+      <div class="menu-items">
+        ${category.foods.map((food) => renderMenuItem(food, false)).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderBuffetPackages() {
+  const container = document.getElementById('buffet-packages');
+  if (!container) return;
+
+  container.innerHTML = state.buffetPackages.map((pkg) => `
+    <div class="buffet-package-card ${pkg.popular ? 'popular' : ''}">
+      ${pkg.popular ? '<span class="buffet-package-badge">Phổ biến</span>' : ''}
+      <div class="buffet-package-header">
+        <h3 class="buffet-package-name">${pkg.name}</h3>
+        <p class="buffet-package-desc">${pkg.description}</p>
+      </div>
+      <div class="buffet-package-price">
+        <span class="buffet-package-amount">${formatCurrency(pkg.price)}</span>
+        <span class="buffet-package-unit">/ người</span>
+      </div>
+      <ul class="buffet-package-features">
+        ${(pkg.features || []).map((feature) => `<li>${feature}</li>`).join('')}
+      </ul>
+      <button class="btn btn-primary btn-full buffet-package-cta" onclick="selectBuffetPackage('${String(pkg.id)}')">Chọn gói này</button>
+    </div>
+  `).join('');
+}
+
+function renderBuffetMenu() {
+  const container = document.getElementById('buffet-menu-items');
+  if (!container) return;
+
+  const searchQuery = (document.getElementById('buffet-search-input')?.value || '').trim().toLowerCase();
+  const categories = state.buffetFoodCategories.map((category) => ({
+    ...category,
+    foods: (category.foods || []).filter((food) => !searchQuery || food.name.toLowerCase().includes(searchQuery)),
+  })).filter((category) => category.foods.length > 0);
+
+  if (categories.length === 0) {
+    container.innerHTML = '<div class="empty-state"><p class="empty-title">Không tìm thấy món buffet</p><p class="empty-desc">Thử từ khóa khác</p></div>';
+    return;
+  }
+
+  container.innerHTML = categories.map((category) => `
+    <div class="category-section">
+      <h3 class="category-section-title">${category.name}</h3>
+      <div class="menu-items">
+        ${category.foods.map((food) => renderMenuItem(food, true)).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderCart() {
+  const emptyEl = document.getElementById('cart-empty');
+  const contentEl = document.getElementById('cart-content');
+  const itemsEl = document.getElementById('cart-items');
+  const totalEl = document.getElementById('cart-total-amount');
+  const ctaEl = document.getElementById('cart-cta');
+  const ctaTotalEl = document.getElementById('cart-cta-total');
+  const badgeEl = document.getElementById('cart-badge');
+
+  const totalItems = state.cart.reduce((sum, item) => sum + item.quantity, 0);
+  const totalAmount = state.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  if (totalItems > 0) {
+    badgeEl.textContent = totalItems;
+    badgeEl.classList.remove('hidden');
+  } else {
+    badgeEl.classList.add('hidden');
+  }
+
+  if (state.currentTab === 'cart' && state.cart.length > 0) {
+    ctaEl.classList.remove('hidden');
+    ctaTotalEl.textContent = formatCurrency(totalAmount);
+  } else {
+    ctaEl.classList.add('hidden');
+  }
+
+  if (state.cart.length === 0) {
+    emptyEl.classList.remove('hidden');
+    contentEl.classList.add('hidden');
+    return;
+  }
+
+  emptyEl.classList.add('hidden');
+  contentEl.classList.remove('hidden');
+
+  itemsEl.innerHTML = state.cart.map((item, index) => `
+    <div class="cart-item">
+      <div class="cart-item-image">${item.image_url ? `<img src="${getImageUrl(item.image_url)}" alt="${item.name}">` : ''}</div>
+      <div class="cart-item-info">
+        <h4 class="cart-item-name">${item.name}</h4>
+        <p class="cart-item-price">${formatCurrency(item.price * item.quantity)}</p>
+      </div>
+      <div class="cart-item-actions">
+        <button class="cart-item-remove" onclick="removeFromCart(${index})">🗑</button>
+        <div class="quantity-selector">
+          <button class="quantity-btn" onclick="updateCartQuantity(${index}, -1)" ${item.quantity <= 1 ? 'disabled' : ''}>-</button>
+          <span class="quantity-value">${item.quantity}</span>
+          <button class="quantity-btn" onclick="updateCartQuantity(${index}, 1)">+</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  totalEl.textContent = formatCurrency(totalAmount);
+}
+
+function renderOrders() {
+  const emptyEl = document.getElementById('orders-empty');
+  const contentEl = document.getElementById('orders-content');
+  const listEl = document.getElementById('orders-list');
+  const paymentCtaEl = document.getElementById('payment-cta');
+  const paymentStatusEl = document.getElementById('session-payment-status');
+
+  const totalOrders = state.summary?.total_orders || 0;
+  const totalItems = state.summary?.total_items || 0;
+  const totalAmount = state.summary?.total_amount || 0;
+  const paymentStatus = state.orders[0]?.payment_status || 'unpaid';
+
+  document.getElementById('total-orders-count').textContent = totalOrders;
+  document.getElementById('total-items-count').textContent = totalItems;
+  document.getElementById('session-total-amount').textContent = formatCurrency(totalAmount);
+  paymentStatusEl.textContent = getPaymentStatusText(paymentStatus);
+  paymentStatusEl.className = `payment-status ${getPaymentStatusClass(paymentStatus)}`;
+
+  if (state.currentTab === 'orders' && state.orders.length > 0 && !['waiting', 'pending', 'paid'].includes(paymentStatus)) {
+    paymentCtaEl.classList.remove('hidden');
+  } else {
+    paymentCtaEl.classList.add('hidden');
+  }
+
+  if (state.orders.length === 0) {
+    emptyEl.classList.remove('hidden');
+    contentEl.classList.add('hidden');
+    return;
+  }
+
+  emptyEl.classList.add('hidden');
+  contentEl.classList.remove('hidden');
+
+  listEl.innerHTML = state.orders.map((order) => `
+    <div class="order-card">
+      <div class="order-card-header">
+        <div class="order-card-info">
+          <span class="order-id">Đơn #${order.id}</span>
+          <span class="order-time">${formatDateTime(order.order_time)}</span>
+        </div>
+        <span class="order-status ${getOrderStatusClass(order.status)}">${order.status || 'Đang xử lý'}</span>
+      </div>
+      <div class="order-items-list">
+        ${(order.details || []).map((item) => `
+          <div class="order-item-row">
+            <div class="order-item-left">
+              <span class="order-item-qty">${item.quantity}x</span>
+              <span class="order-item-name">${item.food_name || 'N/A'}</span>
+            </div>
+            <span class="order-item-price">${formatCurrency((item.price || 0) * (item.quantity || 0))}</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="order-card-footer">
+        <span class="order-total-label">Thành tiền</span>
+        <span class="order-total-amount">${formatCurrency(order.total)}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function switchTab(tab) {
+  state.currentTab = tab;
+  document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.tab === tab));
+  document.querySelectorAll('.section').forEach((section) => section.classList.add('hidden'));
+  document.getElementById('cart-cta').classList.add('hidden');
+  document.getElementById('payment-cta').classList.add('hidden');
+
+  if (tab === 'menu') {
+    if (state.isBuffetActive) {
+      document.getElementById('buffet-menu-section').classList.remove('hidden');
+      renderBuffetMenu();
+    } else if (state.orderMode === 'buffet') {
+      document.getElementById('buffet-section').classList.remove('hidden');
+      renderBuffetPackages();
+    } else if (state.orderMode === 'regular') {
+      document.getElementById('menu-section').classList.remove('hidden');
+      renderCategories();
+      renderMenuItems();
+    } else {
+      document.getElementById('order-type-section').classList.remove('hidden');
+    }
+  }
+
+  if (tab === 'cart') {
+    document.getElementById('cart-section').classList.remove('hidden');
+    renderCart();
+  }
+
+  if (tab === 'orders') {
+    document.getElementById('orders-section').classList.remove('hidden');
+    renderOrders();
+  }
+}
+
+function selectOrderType(type) {
+  state.orderMode = type;
+  switchTab('menu');
+}
+
+function goBack() {
+  if (state.isBuffetActive) {
+    switchTab('menu');
+    return;
+  }
+  state.orderMode = null;
+  switchTab('menu');
+}
+
+function goBackFromBuffetMenu() {
+  if (state.isBuffetActive) {
+    switchTab('menu');
+    return;
+  }
+  state.orderMode = 'buffet';
+  switchTab('menu');
+}
+
+function selectCategory(categoryId) {
+  state.selectedCategoryId = categoryId;
+  renderCategories();
+  renderMenuItems();
+}
+
+function openFoodModal(foodId, isBuffet = false) {
+  const food = isBuffet ? findBuffetFoodById(foodId) : findFoodById(foodId);
+  if (!food) return;
+
+  state.modalFood = { ...food, isBuffet };
+  state.modalQuantity = 1;
+
+  const imageUrl = getImageUrl(food.image_url);
+  const imageContainer = document.getElementById('food-modal-image');
+  imageContainer.innerHTML = imageUrl ? `<img src="${imageUrl}" alt="${food.name}">` : '';
+  imageContainer.style.display = imageUrl ? 'block' : 'none';
+
+  document.getElementById('food-modal-name').textContent = food.name;
+  document.getElementById('food-modal-desc').textContent = food.category_name || (isBuffet ? 'Món buffet' : 'Món ăn');
+  document.getElementById('food-modal-price').textContent = isBuffet && state.isBuffetActive ? 'MIỄN PHÍ' : formatCurrency(food.price);
+  document.getElementById('food-modal-quantity').textContent = '1';
+  document.getElementById('add-to-cart-btn').textContent = state.isBuffetActive ? 'Gọi món' : 'Thêm vào giỏ';
+
+  document.getElementById('food-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeFoodModal() {
+  document.getElementById('food-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+  state.modalFood = null;
+  state.modalQuantity = 1;
+}
+
+function increaseModalQuantity() {
+  state.modalQuantity += 1;
+  document.getElementById('food-modal-quantity').textContent = String(state.modalQuantity);
+}
+
+function decreaseModalQuantity() {
+  if (state.modalQuantity > 1) {
+    state.modalQuantity -= 1;
+    document.getElementById('food-modal-quantity').textContent = String(state.modalQuantity);
+  }
+}
+
+function addToCart(food, quantity) {
+  const existing = state.cart.find((item) => String(item.food_id) === String(food.id));
+  if (existing) {
+    existing.quantity += quantity;
+  } else {
+    state.cart.push({
+      food_id: food.id,
+      name: food.name,
+      price: food.price,
+      image_url: food.image_url,
+      quantity,
+    });
+  }
+  renderCart();
+  showToast(`Đã thêm ${food.name} vào giỏ hàng`);
+}
+
+function removeFromCart(index) {
+  const item = state.cart[index];
+  state.cart.splice(index, 1);
+  renderCart();
+  showToast(`Đã xóa ${item.name} khỏi giỏ hàng`, 'info');
+}
+
+function updateCartQuantity(index, delta) {
+  state.cart[index].quantity += delta;
+  if (state.cart[index].quantity <= 0) {
+    state.cart.splice(index, 1);
+  }
+  renderCart();
+}
+
+async function addToCartFromModal() {
+  if (!state.modalFood) return;
+
+  if (state.isBuffetActive) {
+    try {
+      await fetchJson('/api/orders', {
+        method: 'POST',
+        body: JSON.stringify({
+          table_id: state.tableId,
+          table_key: state.tableKey,
+          items: [{ food_id: state.modalFood.id, quantity: state.modalQuantity }],
+          is_buffet: true,
+          buffet_price: 0,
+        }),
+      });
+      showToast(`Đã gọi ${state.modalFood.name}`);
+      closeFoodModal();
+      await refreshOrders();
+    } catch (error) {
+      showToast(error.message || 'Không thể gọi món buffet', 'error');
+    }
+    return;
+  }
+
+  addToCart(state.modalFood, state.modalQuantity);
+  closeFoodModal();
+}
+
+async function placeOrder() {
+  if (state.cart.length === 0) {
+    showToast('Giỏ hàng trống', 'error');
+    return;
+  }
+
+  try {
+    await fetchJson('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify({
+        table_id: state.tableId,
+        table_key: state.tableKey,
+        items: state.cart.map((item) => ({ food_id: item.food_id, quantity: item.quantity })),
+      }),
+    });
+    state.cart = [];
+    renderCart();
+    await refreshOrders();
+    showToast('Đặt món thành công');
+    switchTab('orders');
+  } catch (error) {
+    showToast(error.message || 'Đặt món thất bại', 'error');
+  }
+}
+
+function selectBuffetPackage(packageId) {
+  const pkg = state.buffetPackages.find((item) => String(item.id) === String(packageId));
+  if (!pkg) return;
+  state.selectedBuffetPackage = pkg;
+  document.getElementById('buffet-confirm-details').innerHTML = `
+    <div class="buffet-confirm-row"><span class="buffet-confirm-label">Gói buffet</span><span class="buffet-confirm-value">${pkg.name}</span></div>
+    <div class="buffet-confirm-row"><span class="buffet-confirm-label">Giá / người</span><span class="buffet-confirm-value">${formatCurrency(pkg.price)}</span></div>
+  `;
+  document.getElementById('buffet-confirm-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeBuffetConfirmModal() {
+  document.getElementById('buffet-confirm-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+async function confirmBuffetOrder() {
+  if (!state.selectedBuffetPackage) return;
+
+  try {
+    await fetchJson('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify({
+        table_id: state.tableId,
+        table_key: state.tableKey,
+        free_drink_id: null,
+        buffet_price: state.selectedBuffetPackage.price,
+        buffet_package_id: state.selectedBuffetPackage.id,
+        buffet_package_name: state.selectedBuffetPackage.name,
+      }),
+    });
+
+    state.orderMode = 'buffet';
+    state.isBuffetActive = false;
+    closeBuffetConfirmModal();
+    await refreshOrders();
+    showToast('Đã gửi yêu cầu buffet, chờ nhà hàng xác nhận.');
+    switchTab('orders');
+  } catch (error) {
+    showToast(error.message || 'Không thể đặt buffet', 'error');
+  }
+}
+
+function openPaymentModal() {
+  const totalAmount = state.summary?.total_amount || 0;
+  document.getElementById('payment-total').textContent = formatCurrency(totalAmount);
+  document.getElementById('payment-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closePaymentModal() {
+  document.getElementById('payment-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+
+async function submitPaymentRequest() {
+  if (state.orders.length === 0) {
+    showToast('Chưa có đơn hàng để thanh toán', 'error');
+    return;
+  }
+
+  try {
+    await fetchJson(`/api/orders/${state.orders[0].id}/request-payment`, {
+      method: 'POST',
+      body: JSON.stringify({ table_key: state.tableKey }),
+    });
+    closePaymentModal();
+    await refreshOrders();
+    showToast('Đã gửi yêu cầu thanh toán');
+  } catch (error) {
+    showToast(error.message || 'Không thể gửi yêu cầu thanh toán', 'error');
+  }
+}
+
+async function loadTable() {
+  state.table = await fetchJson(`/api/tables/${state.tableId}`);
+}
+
+async function loadMenu() {
+  const [categories, foods] = await Promise.all([
+    fetchJson('/api/menu/categories'),
+    fetchJson('/api/menu/foods')
+  ]);
+  state.menuCategories = categories.map(c => ({
+    ...c, 
+    foods: foods.filter(f => String(f.category_id) === String(c.id))
+  }));
+  const categoryIds = new Set(state.menuCategories.map((category) => String(category.id)));
+  if (state.selectedCategoryId !== 'all' && !categoryIds.has(String(state.selectedCategoryId))) {
+    state.selectedCategoryId = 'all';
+  }
+}
+
+async function loadBuffetMenu() {
+  const foods = await fetchJson('/api/menu/foods');
+  const categories = await fetchJson('/api/menu/categories');
+  const mapped = categories.map(c => ({
+    ...c, 
+    foods: foods.filter(f => String(f.category_id) === String(c.id))
+  })).filter(c => c.foods.length > 0);
+  state.buffetFoodCategories = mapped;
+  state.buffetDrinkCategories = []; // Not split in current menu logic
+
+}
+
+async function loadBuffetPackages() {
+  // Buffet packages endpoint not migrated to microservices yet
+  try {
+      const res = await fetchJson('/api/menu/buffet-packages');
+      state.buffetPackages = res?.length ? res : [{ id: 1, name: "Buffet Tiêu Chuẩn (Chưa cấu hình CSDL)", price: 299000 }];
+  } catch (e) {
+      state.buffetPackages = [{ id: 1, name: "Buffet Tiêu Chuẩn (Lỗi mạng)", price: 299000 }];
+  }
+}
+
+async function refreshOrders() {
+  const orders = await fetchJson(`/api/orders/table/${state.tableId}?tableKey=${encodeURIComponent(state.tableKey || '')}&t=${Date.now()}`);
+  state.orders = orders || [];
+  const unpaidOrders = state.orders.filter(o => o.payment_status !== 'paid');
+  const total = unpaidOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  state.summary = unpaidOrders.length > 0 ? { total: total, status: unpaidOrders[0].status, payment_status: unpaidOrders[0].payment_status } : null;
+
+  const buffetOrder = state.orders.find(
+    (order) => order.is_buffet && order.payment_status !== 'paid' && order.status !== 'Chờ xác nhận'
+  );
+  state.isBuffetActive = !!buffetOrder;
+
+  const pendingBuffetOrder = state.orders.find(
+    (order) => order.is_buffet && order.payment_status !== 'paid'
+  );
+  const buffetPackageSource = buffetOrder || pendingBuffetOrder || null;
+  if (buffetPackageSource && !state.selectedBuffetPackage) {
+    state.selectedBuffetPackage = {
+      id: buffetPackageSource.buffet_package_id,
+      name: buffetPackageSource.buffet_package_name,
+      price: buffetPackageSource.total,
+    };
+  }
+  if (state.isBuffetActive) {
+    state.orderMode = 'buffet';
+  }
+
+  updateHeader();
+  updateBuffetBanner();
+  renderOrders();
+}
+
+function initializeSocket() {
+  const gatewayUrl = getGatewayUrl();
+  if (typeof SockJS === 'undefined' || typeof Stomp === 'undefined') return;
+
+  const orderSocket = new SockJS(`${gatewayUrl}/ws/order`);
+  const orderStomp = Stomp.over(orderSocket);
+  orderStomp.debug = null;
+  orderStomp.connect({}, () => {
+    orderStomp.subscribe(`/topic/table.${state.tableId}`, async (message) => {
+      try {
+        const payload = JSON.parse(message.body);
+        const event = payload.event;
+        const data = payload.data || {};
+        
+        if (event === 'order_created') {
+          showToast('Đơn hàng đã được tạo', 'info');
+          await refreshOrders();
+        } else if (event === 'buffet_order_created') {
+          showToast('Đặt buffet thành công', 'success');
+          await refreshOrders();
+        } else if (event === 'buffet_food_added') {
+          showToast('Đã thêm món buffet', 'info');
+          await refreshOrders();
+        } else if (event === 'order_status_updated') {
+          if (!shouldProcessSocketEvent('order_status_updated', [data.order_id, data.status, data.payment_status])) return;
+          await refreshOrders();
+        } else if (event === 'payment_completed') {
+          if (!shouldProcessSocketEvent('payment_completed', [data.request_id, data.order_id, data.table_id, data.amount])) return;
+          showToast('Thanh toán hoàn tất. Cảm ơn quý khách!', 'success');
+          await refreshOrders();
+        }
+      } catch (e) {
+        console.error('Lỗi khi parse message order:', e);
+      }
+    });
+  });
+
+  const kitchenSocket = new SockJS(`${gatewayUrl}/ws/kitchen`);
+  const kitchenStomp = Stomp.over(kitchenSocket);
+  kitchenStomp.debug = null;
+  kitchenStomp.connect({}, () => {
+    kitchenStomp.subscribe(`/topic/order.status.${state.tableId}`, async (message) => {
+       try {
+         const data = JSON.parse(message.body);
+         if (!shouldProcessSocketEvent('order_item_delivered', [data.order_id, data.status])) return;
+         showToast('Món ăn đã được phục vụ', 'success');
+         await refreshOrders();
+       } catch (e) {
+         console.error('Lỗi khi parse message kitchen:', e);
+       }
+    });
+  });
+  
+  const paymentSocket = new SockJS(`${gatewayUrl}/ws/payment`);
+  const paymentStomp = Stomp.over(paymentSocket);
+  paymentStomp.debug = null;
+  paymentStomp.connect({}, () => {
+    paymentStomp.subscribe(`/topic/payment.completed`, async (message) => {
+       try {
+         const data = JSON.parse(message.body);
+         if (data.table_id && String(data.table_id) === String(state.tableId)) {
+           if (!shouldProcessSocketEvent('payment_completed', [data.request_id, data.order_id, data.table_id, data.amount])) return;
+           showToast('Thanh toán hoàn tất. Cảm ơn quý khách!', 'success');
+           await refreshOrders();
+         }
+       } catch (e) {
+         console.error('Lỗi message payment:', e);
+       }
+    });
+  });
+}

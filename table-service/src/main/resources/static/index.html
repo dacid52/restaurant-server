@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a1a1a">
+  <title>Aurora Restaurant</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%231a1a1a'/%3E%3Cpath d='M32 14l5.7 11.5L50 27.3l-9 8.8 2.1 12.4L32 42.3 20.9 48.5 23 36.1l-9-8.8 12.3-1.8L32 14z' fill='%23d4af37'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-content">
+      <div class="loading-logo">Aurora</div>
+      <div class="loading-spinner"></div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="app hidden">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div class="header-brand">
+          <h1 class="brand-name">Aurora</h1>
+        </div>
+        <div class="header-info">
+          <div class="table-info">
+            <span class="table-label">Bàn</span>
+            <span id="table-name" class="table-name">--</span>
+          </div>
+          <div id="session-status" class="session-status">
+            <span class="status-dot"></span>
+            <span class="status-text">Đang tải...</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Buffet Active Banner -->
+    <div id="buffet-banner" class="buffet-banner hidden">
+      <div class="buffet-banner-content">
+        <div class="buffet-banner-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+        </div>
+        <div class="buffet-banner-text">
+          <span class="buffet-banner-title">Buffet đang hoạt động</span>
+          <span id="buffet-package-name" class="buffet-banner-package">--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Order Type Selection -->
+      <section id="order-type-section" class="section order-type-section">
+        <div class="section-header">
+          <h2 class="section-title">Chọn loại phục vụ</h2>
+          <p class="section-subtitle">Quý khách muốn dùng bữa theo hình thức nào?</p>
+        </div>
+        <div class="order-type-cards">
+          <button class="order-type-card" data-type="regular" onclick="selectOrderType('regular')">
+            <div class="order-type-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M3 3h18v18H3z"/>
+                <path d="M12 8v8"/>
+                <path d="M8 12h8"/>
+              </svg>
+            </div>
+            <h3 class="order-type-title">Gọi món</h3>
+            <p class="order-type-desc">Chọn từng món theo sở thích</p>
+            <span class="order-type-cta">Xem thực đơn →</span>
+          </button>
+          <button class="order-type-card" data-type="buffet" onclick="selectOrderType('buffet')">
+            <div class="order-type-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+            </div>
+            <h3 class="order-type-title">Buffet</h3>
+            <p class="order-type-desc">Thỏa sức thưởng thức không giới hạn</p>
+            <span class="order-type-cta">Chọn gói buffet →</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Menu Section -->
+      <section id="menu-section" class="section menu-section hidden">
+        <div class="menu-header">
+          <button class="back-btn" onclick="goBack()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5"/>
+              <path d="M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <h2 class="menu-title">Thực đơn</h2>
+          <div class="menu-header-spacer"></div>
+        </div>
+        
+        <div class="search-container">
+          <div class="search-box">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" id="search-input" class="search-input" placeholder="Tìm món ăn...">
+            <button id="clear-search" class="clear-search hidden">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18"/>
+                <path d="M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="categories-scroll">
+          <div id="categories-list" class="categories-list">
+            <!-- Categories will be rendered here -->
+          </div>
+        </div>
+
+        <div id="menu-items" class="menu-items">
+          <!-- Menu items will be rendered here -->
+        </div>
+      </section>
+
+      <!-- Buffet Packages Section -->
+      <section id="buffet-section" class="section buffet-section hidden">
+        <div class="menu-header">
+          <button class="back-btn" onclick="goBack()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5"/>
+              <path d="M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <h2 class="menu-title">Gói Buffet</h2>
+          <div class="menu-header-spacer"></div>
+        </div>
+        
+        <div id="buffet-packages" class="buffet-packages">
+          <!-- Buffet packages will be rendered here -->
+        </div>
+      </section>
+
+      <!-- Buffet Menu Section (after selecting a package) -->
+      <section id="buffet-menu-section" class="section buffet-menu-section hidden">
+        <div class="menu-header">
+          <button class="back-btn" onclick="goBackFromBuffetMenu()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 12H5"/>
+              <path d="M12 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <h2 class="menu-title">Món Buffet</h2>
+          <div class="menu-header-spacer"></div>
+        </div>
+
+        <div class="search-container">
+          <div class="search-box">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" id="buffet-search-input" class="search-input" placeholder="Tìm món buffet...">
+          </div>
+        </div>
+
+        <div id="buffet-menu-items" class="menu-items">
+          <!-- Buffet menu items will be rendered here -->
+        </div>
+      </section>
+
+      <!-- Cart Section -->
+      <section id="cart-section" class="section cart-section hidden">
+        <div class="section-header">
+          <h2 class="section-title">Giỏ hàng</h2>
+        </div>
+        
+        <div id="cart-empty" class="empty-state">
+          <div class="empty-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+              <circle cx="9" cy="21" r="1"/>
+              <circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+          </div>
+          <p class="empty-title">Giỏ hàng trống</p>
+          <p class="empty-desc">Hãy thêm món ăn từ thực đơn</p>
+          <button class="btn btn-primary" onclick="switchTab('menu')">Xem thực đơn</button>
+        </div>
+
+        <div id="cart-content" class="cart-content hidden">
+          <div id="cart-items" class="cart-items">
+            <!-- Cart items will be rendered here -->
+          </div>
+          <div class="cart-summary">
+            <div class="cart-total">
+              <span class="cart-total-label">Tổng cộng</span>
+              <span id="cart-total-amount" class="cart-total-amount">0đ</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Orders Section -->
+      <section id="orders-section" class="section orders-section hidden">
+        <div class="section-header">
+          <h2 class="section-title">Đơn hàng</h2>
+        </div>
+
+        <div id="orders-empty" class="empty-state">
+          <div class="empty-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <path d="M14 2v6h6"/>
+              <path d="M16 13H8"/>
+              <path d="M16 17H8"/>
+              <path d="M10 9H8"/>
+            </svg>
+          </div>
+          <p class="empty-title">Chưa có đơn hàng</p>
+          <p class="empty-desc">Đơn hàng của bạn sẽ xuất hiện ở đây</p>
+        </div>
+
+        <div id="orders-content" class="orders-content hidden">
+          <!-- Session Summary Card -->
+          <div id="session-summary" class="session-summary-card">
+            <div class="session-summary-header">
+              <h3 class="session-summary-title">Tổng quan phiên</h3>
+              <span id="session-payment-status" class="payment-status">Chưa thanh toán</span>
+            </div>
+            <div class="session-summary-stats">
+              <div class="stat-item">
+                <span class="stat-value" id="total-orders-count">0</span>
+                <span class="stat-label">Đơn hàng</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value" id="total-items-count">0</span>
+                <span class="stat-label">Món</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value" id="session-total-amount">0đ</span>
+                <span class="stat-label">Tổng tiền</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Orders List -->
+          <div id="orders-list" class="orders-list">
+            <!-- Orders will be rendered here -->
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="menu" onclick="switchTab('menu')">
+        <svg class="nav-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3h18v18H3z"/>
+          <path d="M12 8v8"/>
+          <path d="M8 12h8"/>
+        </svg>
+        <span class="nav-label">Menu</span>
+      </button>
+      <button class="nav-item" data-tab="cart" onclick="switchTab('cart')">
+        <div class="nav-icon-wrapper">
+          <svg class="nav-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="21" r="1"/>
+            <circle cx="20" cy="21" r="1"/>
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+          </svg>
+          <span id="cart-badge" class="nav-badge hidden">0</span>
+        </div>
+        <span class="nav-label">Giỏ hàng</span>
+      </button>
+      <button class="nav-item" data-tab="orders" onclick="switchTab('orders')">
+        <svg class="nav-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <path d="M14 2v6h6"/>
+          <path d="M16 13H8"/>
+          <path d="M16 17H8"/>
+        </svg>
+        <span class="nav-label">Đơn hàng</span>
+      </button>
+    </nav>
+
+    <!-- Sticky Cart CTA -->
+    <div id="cart-cta" class="cart-cta hidden">
+      <button class="btn btn-primary btn-lg btn-full" onclick="placeOrder()">
+        <span>Đặt món</span>
+        <span id="cart-cta-total" class="cart-cta-total">0đ</span>
+      </button>
+    </div>
+
+    <!-- Sticky Payment CTA -->
+    <div id="payment-cta" class="payment-cta hidden">
+      <button class="btn btn-accent btn-lg btn-full" onclick="openPaymentModal()">
+        <span>Yêu cầu thanh toán</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Food Detail Modal -->
+  <div id="food-modal" class="modal hidden">
+    <div class="modal-overlay" onclick="closeFoodModal()"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <button class="modal-close" onclick="closeFoodModal()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18"/>
+          <path d="M6 6l12 12"/>
+        </svg>
+      </button>
+      <div class="food-modal-content">
+        <div id="food-modal-image" class="food-modal-image">
+          <img src="" alt="">
+        </div>
+        <div class="food-modal-info">
+          <h3 id="food-modal-name" class="food-modal-name"></h3>
+          <p id="food-modal-desc" class="food-modal-desc"></p>
+          <p id="food-modal-price" class="food-modal-price"></p>
+        </div>
+        <div class="food-modal-actions">
+          <div class="quantity-selector">
+            <button class="quantity-btn" onclick="decreaseModalQuantity()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14"/>
+              </svg>
+            </button>
+            <span id="food-modal-quantity" class="quantity-value">1</span>
+            <button class="quantity-btn" onclick="increaseModalQuantity()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14"/>
+                <path d="M5 12h14"/>
+              </svg>
+            </button>
+          </div>
+          <button id="add-to-cart-btn" class="btn btn-primary btn-lg" onclick="addToCartFromModal()">
+            Thêm vào giỏ
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Buffet Confirm Modal -->
+  <div id="buffet-confirm-modal" class="modal hidden">
+    <div class="modal-overlay" onclick="closeBuffetConfirmModal()"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <button class="modal-close" onclick="closeBuffetConfirmModal()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18"/>
+          <path d="M6 6l12 12"/>
+        </svg>
+      </button>
+      <div class="buffet-confirm-content">
+        <div class="buffet-confirm-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+        </div>
+        <h3 class="buffet-confirm-title">Xác nhận đặt Buffet</h3>
+        <div id="buffet-confirm-details" class="buffet-confirm-details">
+          <!-- Details will be rendered here -->
+        </div>
+        <button class="btn btn-primary btn-lg btn-full" onclick="confirmBuffetOrder()">
+          Xác nhận đặt Buffet
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Modal -->
+  <div id="payment-modal" class="modal hidden">
+    <div class="modal-overlay" onclick="closePaymentModal()"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <button class="modal-close" onclick="closePaymentModal()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18"/>
+          <path d="M6 6l12 12"/>
+        </svg>
+      </button>
+      <div class="payment-modal-content">
+        <div class="payment-modal-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+            <path d="M1 10h22"/>
+          </svg>
+        </div>
+        <h3 class="payment-modal-title">Yêu cầu thanh toán</h3>
+        <div class="payment-modal-info">
+          <div class="payment-info-row">
+            <span class="payment-info-label">Tổng tiền phiên</span>
+            <span id="payment-total" class="payment-info-value">0đ</span>
+          </div>
+        </div>
+        <p class="payment-modal-note">
+          Yêu cầu thanh toán sẽ được gửi đến thu ngân. Nhân viên sẽ đến bàn để hỗ trợ thanh toán.
+        </p>
+        <button class="btn btn-accent btn-lg btn-full" onclick="submitPaymentRequest()">
+          Gửi yêu cầu thanh toán
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Socket.io replacement -->
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

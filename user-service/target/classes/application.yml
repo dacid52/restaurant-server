@@ -1,0 +1,21 @@
+server:
+  port: 3005
+
+spring:
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  application:
+    name: user-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/UserDB?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: ""
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+jwt:
+  secret: restaurant_secret_key_12345678900
+  expiration: 86400000

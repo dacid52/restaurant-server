@@ -1,0 +1,337 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Káº¿t quáº£ thanh toĂ¡n - Restaurant</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%231a1a1a'/%3E%3Cpath d='M32 14l5.7 11.5L50 27.3l-9 8.8 2.1 12.4L32 42.3 20.9 48.5 23 36.1l-9-8.8 12.3-1.8L32 14z' fill='%23d4af37'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .payment-result-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .payment-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .payment-icon.success {
+            color: #10ac84;
+        }
+
+        .payment-icon.error {
+            color: #ff6b6b;
+        }
+
+        .payment-icon.pending {
+            color: #ff9f43;
+        }
+
+        .payment-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .payment-title.success {
+            color: #10ac84;
+        }
+
+        .payment-title.error {
+            color: #ff6b6b;
+        }
+
+        .payment-title.pending {
+            color: #ff9f43;
+        }
+
+        .payment-message {
+            font-size: 1rem;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .payment-details {
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .payment-detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .payment-detail-row:last-child {
+            margin-bottom: 0;
+            font-weight: 600;
+            font-size: 1rem;
+            padding-top: 8px;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 3px solid rgba(102, 126, 234, 0.1);
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .payment-result-container {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+
+            .payment-icon {
+                font-size: 3rem;
+            }
+
+            .payment-title {
+                font-size: 1.3rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="payment-result-container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Äang xá»­ lĂ½ káº¿t quáº£ thanh toĂ¡n...</p>
+        </div>
+
+        <div id="payment-result" style="display: none;">
+            <div id="payment-icon" class="payment-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            
+            <h1 id="payment-title" class="payment-title">
+                Thanh toĂ¡n thĂ nh cĂ´ng!
+            </h1>
+            
+            <p id="payment-message" class="payment-message">
+                Cáº£m Æ¡n báº¡n Ä‘Ă£ thanh toĂ¡n. ÄÆ¡n hĂ ng cá»§a báº¡n Ä‘Ă£ Ä‘Æ°á»£c xĂ¡c nháº­n.
+            </p>
+
+            <div id="payment-details" class="payment-details">
+                <div class="payment-detail-row">
+                    <span>MĂ£ Ä‘Æ¡n hĂ ng:</span>
+                    <span id="order-id">-</span>
+                </div>
+                <div class="payment-detail-row">
+                    <span>MĂ£ giao dá»‹ch:</span>
+                    <span id="trans-id">-</span>
+                </div>
+                <div class="payment-detail-row">
+                    <span>Sá»‘ tiá»n:</span>
+                    <span id="amount">-</span>
+                </div>
+                <div class="payment-detail-row">
+                    <span>Thá»i gian:</span>
+                    <span id="payment-time">-</span>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <a href="#" id="back-to-order" class="btn btn-primary">
+                    <i class="fas fa-arrow-left"></i>
+                    Quay láº¡i Ä‘Æ¡n hĂ ng
+                </a>
+                <button onclick="window.close()" class="btn btn-secondary">
+                    <i class="fas fa-times"></i>
+                    ÄĂ³ng cá»­a sá»•
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Parse URL parameters
+        function getUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                partnerCode: params.get('partnerCode'),
+                orderId: params.get('orderId'),
+                requestId: params.get('requestId'),
+                amount: params.get('amount'),
+                orderInfo: params.get('orderInfo'),
+                orderType: params.get('orderType'),
+                transId: params.get('transId'),
+                resultCode: params.get('resultCode'),
+                message: params.get('message'),
+                payType: params.get('payType'),
+                responseTime: params.get('responseTime'),
+                extraData: params.get('extraData'),
+                signature: params.get('signature')
+            };
+        }
+
+        function formatPrice(price) {
+            return new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND'
+            }).format(price);
+        }
+
+        function formatDateTime(timestamp) {
+            if (!timestamp) return '-';
+            const date = new Date(parseInt(timestamp));
+            return date.toLocaleString('vi-VN');
+        }
+
+        function showResult(params) {
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('payment-result');
+            const icon = document.getElementById('payment-icon');
+            const title = document.getElementById('payment-title');
+            const message = document.getElementById('payment-message');
+
+            loading.style.display = 'none';
+            result.style.display = 'block';
+
+            const resultCode = parseInt(params.resultCode);
+            
+            if (resultCode === 0) {
+                // Success
+                icon.innerHTML = '<i class="fas fa-check-circle"></i>';
+                icon.className = 'payment-icon success';
+                title.textContent = 'Thanh toĂ¡n thĂ nh cĂ´ng!';
+                title.className = 'payment-title success';
+                message.textContent = 'Cáº£m Æ¡n báº¡n Ä‘Ă£ thanh toĂ¡n. ÄÆ¡n hĂ ng cá»§a báº¡n Ä‘Ă£ Ä‘Æ°á»£c xĂ¡c nháº­n.';
+            } else {
+                // Failed
+                icon.innerHTML = '<i class="fas fa-times-circle"></i>';
+                icon.className = 'payment-icon error';
+                title.textContent = 'Thanh toĂ¡n tháº¥t báº¡i!';
+                title.className = 'payment-title error';
+                message.textContent = params.message || 'ÄĂ£ xáº£y ra lá»—i trong quĂ¡ trĂ¬nh thanh toĂ¡n. Vui lĂ²ng thá»­ láº¡i.';
+            }
+
+            // Update details
+            document.getElementById('order-id').textContent = params.orderId || '-';
+            document.getElementById('trans-id').textContent = params.transId || '-';
+            document.getElementById('amount').textContent = params.amount ? formatPrice(params.amount) : '-';
+            document.getElementById('payment-time').textContent = formatDateTime(params.responseTime);
+
+            // Set back to order link
+            if (params.extraData) {
+                try {
+                    const extra = JSON.parse(params.extraData);
+                    const backLink = document.getElementById('back-to-order');
+                    backLink.href = `${window.location.origin}/?table_id=${extra.tableId}&key=${extra.tableKey || ''}`;
+                } catch (e) {
+                    console.error('Error parsing extraData:', e);
+                }
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            const params = getUrlParams();
+            console.log('Payment return params:', params);
+            
+            // Show loading for a moment
+            setTimeout(() => {
+                showResult(params);
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
+

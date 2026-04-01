@@ -1,0 +1,19 @@
+server:
+  port: 3007
+
+spring:
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  application:
+    name: image-service
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+jwt:
+  secret: restaurant_secret_key_12345678900
+  expiration: 86400000
+
+upload:
+  dir: uploads

@@ -1,0 +1,16 @@
+com\restaurant\orderservice\repository\OrderRepository.class
+com\restaurant\orderservice\dto\OrderItemDto.class
+com\restaurant\orderservice\client\TableClient.class
+com\restaurant\orderservice\client\KitchenClient.class
+com\restaurant\orderservice\dto\OrderRequest.class
+com\restaurant\orderservice\OrderServiceApplication.class
+com\restaurant\orderservice\entity\Order.class
+com\restaurant\orderservice\security\JwtUtil.class
+com\restaurant\orderservice\controller\OrderController.class
+com\restaurant\orderservice\entity\OrderDetail.class
+com\restaurant\orderservice\security\JwtAuthenticationFilter.class
+com\restaurant\orderservice\client\MenuClient.class
+com\restaurant\orderservice\config\WebConfig.class
+com\restaurant\orderservice\client\PaymentClient.class
+com\restaurant\orderservice\exception\GlobalExceptionHandler.class
+com\restaurant\orderservice\service\OrderService.class

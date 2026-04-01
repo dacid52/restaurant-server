@@ -1,0 +1,24 @@
+server:
+  port: 3008
+
+spring:
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+  application:
+    name: payment-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/PaymentDB?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: ""
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+jwt:
+  secret: restaurant_secret_key_12345678900
+  expiration: 86400000
+
+services:
+  order: http://localhost:3003
