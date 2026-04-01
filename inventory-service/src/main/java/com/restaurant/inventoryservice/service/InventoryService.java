@@ -7,10 +7,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.lang.NonNull;
+import com.restaurant.inventoryservice.dto.InventoryDeductRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -71,6 +73,25 @@ public class InventoryService {
 
     public List<Ingredient> getLowStock() {
         return ingredientRepository.findByQuantityLessThanOrderByQuantityAsc(new BigDecimal("10"));
+    }
+
+    @Transactional
+    public void deductStock(@NonNull List<InventoryDeductRequest> requests) {
+        List<Ingredient> updated = new ArrayList<>();
+        for (InventoryDeductRequest req : requests) {
+            Integer ingredientId = req.getIngredientId();
+            if (ingredientId == null) throw new RuntimeException("Ingredient ID cannot be null");
+            Ingredient ingredient = ingredientRepository.findById(ingredientId)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy nguyên liệu ID " + ingredientId));
+            
+            BigDecimal current = ingredient.getQuantity();
+            if (current.compareTo(req.getAmount()) < 0) {
+                throw new RuntimeException("Nguyên liệu '" + ingredient.getName() + "' không đủ trong kho (Cần: " + req.getAmount() + ", Có: " + current + ")");
+            }
+            ingredient.setQuantity(current.subtract(req.getAmount()));
+            updated.add(ingredient);
+        }
+        ingredientRepository.saveAll(updated);
     }
 
     // specific method for menu-service feign client

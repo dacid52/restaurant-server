@@ -50,8 +50,9 @@ function formatDateTime(value) {
 function getUrlParams() {
   const params = new URLSearchParams(window.location.search);
   return {
-    tableId: params.get('table_id'),
-    tableKey: params.get('key'),
+    // Support both formats: QR generates 'tableId'/'tableKey', fallback to 'table_id'/'key'
+    tableId: params.get('tableId') || params.get('table_id'),
+    tableKey: params.get('tableKey') || params.get('key'),
   };
 }
 
@@ -594,6 +595,8 @@ async function addToCartFromModal() {
 
   if (state.isBuffetActive) {
     try {
+      // ✅ FIX: Use buffet package price instead of 0
+      const buffetPrice = state.selectedBuffetPackage?.price || 0;
       await fetchJson('/api/orders', {
         method: 'POST',
         body: JSON.stringify({
@@ -601,7 +604,7 @@ async function addToCartFromModal() {
           table_key: state.tableKey,
           items: [{ food_id: state.modalFood.id, quantity: state.modalQuantity }],
           is_buffet: true,
-          buffet_price: 0,
+          buffet_price: buffetPrice,  // ✅ Use actual package price
         }),
       });
       showToast(`Đã gọi ${state.modalFood.name}`);
@@ -763,7 +766,14 @@ async function refreshOrders() {
   state.orders = orders || [];
   const unpaidOrders = state.orders.filter(o => o.payment_status !== 'paid');
   const total = unpaidOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-  state.summary = unpaidOrders.length > 0 ? { total: total, status: unpaidOrders[0].status, payment_status: unpaidOrders[0].payment_status } : null;
+  state.summary = unpaidOrders.length > 0 ? { 
+    total: total, 
+    total_amount: total,  // ✅ FIX: Add total_amount for compatibility
+    total_orders: unpaidOrders.length,  // ✅ Add for order count
+    total_items: unpaidOrders.reduce((sum, o) => sum + (o.details?.length || 0), 0),  // ✅ Add for item count
+    status: unpaidOrders[0].status, 
+    payment_status: unpaidOrders[0].payment_status 
+  } : null;
 
   const buffetOrder = state.orders.find(
     (order) => order.is_buffet && order.payment_status !== 'paid' && order.status !== 'Chờ xác nhận'
@@ -861,3 +871,53 @@ function initializeSocket() {
     });
   });
 }
+async function initApp() {
+  const params = getUrlParams();
+  state.tableId = params.tableId;
+  state.tableKey = params.tableKey;
+
+  if (!state.tableId || !state.tableKey) {
+    const loadingContent = document.querySelector('.loading-content');
+    if (loadingContent) {
+      loadingContent.innerHTML = '<div class="loading-logo">Aurora</div><p style="color:#e57373;margin-top:16px;font-size:14px;">Link QR không hợp lệ.<br>Vui lòng quét lại mã QR.</p>';
+    }
+    console.error('Missing tableId or tableKey in URL', params);
+    return;
+  }
+
+  try {
+    // Validate key first and update table status to "Đang sử dụng"
+    const isValid = await fetchJson(`/api/tables/${state.tableId}/validate-key?tableKey=${encodeURIComponent(state.tableKey)}`);
+    if (!isValid) {
+      const loadingContent = document.querySelector('.loading-content');
+      if (loadingContent) {
+        loadingContent.innerHTML = '<div class="loading-logo">Aurora</div><p style="color:#e57373;margin-top:16px;font-size:14px;">Link QR đã hết hạn.<br>Vui lòng yêu cầu mã QR mới.</p>';
+      }
+      return;
+    }
+
+    await Promise.all([
+      loadTable(),
+      loadMenu(),
+      loadBuffetMenu(),
+      loadBuffetPackages(),
+      refreshOrders()
+    ]);
+
+    initializeSocket();
+    
+    // Hide loading screen and show app
+    document.getElementById('loading-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    
+    console.log('App initialized successfully for table', state.tableId);
+  } catch (error) {
+    console.error('Initialization error:', error);
+    const loadingContent = document.querySelector('.loading-content');
+    if (loadingContent) {
+      loadingContent.innerHTML = `<div class="loading-logo">Aurora</div><p style="color:#e57373;margin-top:16px;font-size:14px;">Không thể kết nối.<br>${error.message || 'Vui lòng thử lại.'}</p>`;
+    }
+  }
+}
+
+window.addEventListener('DOMContentLoaded', initApp);

@@ -1,6 +1,11 @@
 package com.restaurant.kitchenservice.service;
 
+import com.restaurant.kitchenservice.client.InventoryClient;
+import com.restaurant.kitchenservice.client.MenuClient;
 import com.restaurant.kitchenservice.client.OrderClient;
+import com.restaurant.kitchenservice.dto.FoodDto;
+import com.restaurant.kitchenservice.dto.IngredientDto;
+import com.restaurant.kitchenservice.dto.InventoryDeductRequest;
 import com.restaurant.kitchenservice.entity.KitchenQueue;
 import com.restaurant.kitchenservice.repository.KitchenQueueRepository;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +27,8 @@ public class KitchenService {
 
     private final KitchenQueueRepository kitchenQueueRepository;
     private final OrderClient orderClient;
+    private final MenuClient menuClient;
+    private final InventoryClient inventoryClient;
     private final SocketService socketService;
 
     public List<Map<String, Object>> getQueue(String status) {
@@ -69,6 +78,12 @@ public class KitchenService {
         // 🔔 If completed, emit delivered event — mirrors: io.emit('queue_item_delivered', ...)
         if ("Hoàn thành".equals(status)) {
             socketService.emitQueueItemDelivered(queuePayload);
+            // 🥗 Kích hoạt trừ kho định lượng
+            try {
+                deductIngredientsForDish(id);
+            } catch (Exception e) {
+                log.error("Lỗi khi trừ kho định lượng cho món: " + id, e);
+            }
         }
 
         try {
@@ -128,5 +143,47 @@ public class KitchenService {
         Map<String, Object> payload = new HashMap<>();
         payload.put("cleared", true);
         socketService.emitCompletedItemsCleared(payload);
+    }
+
+    private void deductIngredientsForDish(Integer queueId) {
+        Map<String, Object> data = kitchenQueueRepository.findFoodIdAndQuantityByQueueId(queueId);
+        if (data == null || data.get("foodId") == null) {
+            log.warn("[TRU KHO] Khong tim thay foodId/quantity cho queueId={}", queueId);
+            return;
+        }
+
+        Integer foodId = (Integer) data.get("foodId");
+        Integer quantity = (Integer) data.get("quantity");
+        log.info("[TRU KHO] foodId={}, quantity={}, queueId={}", foodId, quantity, queueId);
+
+        FoodDto food = null;
+        try {
+            food = menuClient.getFoodById(foodId);
+        } catch (Exception e) {
+            log.error("[TRU KHO] Loi goi menu-service laydinh luong foodId={}: {}", foodId, e.getMessage());
+            return;
+        }
+
+        if (food == null) {
+            log.warn("[TRU KHO] menu-service tra null cho foodId={}", foodId);
+            return;
+        }
+
+        if (food.getIngredients() == null || food.getIngredients().isEmpty()) {
+            log.info("[TRU KHO] foodId={} chua co dinh luong nguyen lieu, bo qua", foodId);
+            return;
+        }
+
+        List<InventoryDeductRequest> requests = new ArrayList<>();
+        for (IngredientDto ing : food.getIngredients()) {
+            BigDecimal totalAmount = ing.getAmount().multiply(new BigDecimal(quantity));
+            log.info("[TRU KHO]  -> ingredientId={}, amount/phan={}, so phan={}, tong={}",
+                    ing.getId(), ing.getAmount(), quantity, totalAmount);
+            requests.add(new InventoryDeductRequest(ing.getId(), totalAmount));
+        }
+
+        log.info("[TRU KHO] Goi inventory-service tru {} nguyen lieu cho foodId={}", requests.size(), foodId);
+        inventoryClient.deductStock(requests);
+        log.info("[TRU KHO] Thanh cong cho foodId={} x{}", foodId, quantity);
     }
 }

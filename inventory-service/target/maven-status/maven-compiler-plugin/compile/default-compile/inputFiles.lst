@@ -6,4 +6,5 @@ C:\restaurant-server\inventory-service\src\main\java\com\restaurant\inventoryser
 C:\restaurant-server\inventory-service\src\main\java\com\restaurant\inventoryservice\repository\IngredientRepository.java
 C:\restaurant-server\inventory-service\src\main\java\com\restaurant\inventoryservice\security\JwtUtil.java
 C:\restaurant-server\inventory-service\src\main\java\com\restaurant\inventoryservice\controller\InventoryController.java
+C:\restaurant-server\inventory-service\src\main\java\com\restaurant\inventoryservice\dto\InventoryDeductRequest.java
 C:\restaurant-server\inventory-service\src\main\java\com\restaurant\inventoryservice\entity\Ingredient.java

@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import org.springframework.lang.NonNull;
+import com.restaurant.inventoryservice.dto.InventoryDeductRequest;
 
 @RestController
 @RequestMapping("/api/inventory")
@@ -50,6 +51,12 @@ public class InventoryController {
         BigDecimal amount = new BigDecimal(payload.get("amount").toString());
         String action = payload.get("action").toString();
         return ResponseEntity.ok(inventoryService.updateQuantity(id, amount, action));
+    }
+
+    @PostMapping("/ingredients/batch-deduct")
+    public ResponseEntity<Void> deductStock(@RequestBody @NonNull List<InventoryDeductRequest> requests) {
+        inventoryService.deductStock(requests);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/ingredients/low-stock")

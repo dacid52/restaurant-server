@@ -6,6 +6,7 @@ import com.restaurant.orderservice.service.OrderService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.lang.NonNull;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
@@ -48,15 +50,37 @@ public class OrderController {
     }
 
     @PostMapping("/{id}/request-payment")
-    public ResponseEntity<Map<String, Object>> requestPayment(@PathVariable Integer id) {
-        // Logic request payment should be in Service, omitted for brevity. You can implement it fully in Service
+    public ResponseEntity<Map<String, Object>> requestPayment(@PathVariable @NonNull Integer id) {
+        orderService.requestPayment(id);
         return ResponseEntity.ok(Map.of("success", true, "message", "Đã gửi yêu cầu thanh toán"));
     }
 
-    @PostMapping("/payments/complete")
+    @PostMapping("/complete-payment")
     public ResponseEntity<Map<String, Object>> completePayment(@RequestBody Map<String, Object> payload) {
-        // Payment complete logic
-        return ResponseEntity.ok(Map.of("success", true, "message", "Đã hoàn tất thanh toán và đóng bàn"));
+        log.info("📥 Complete payment request - Payload: {}", payload);
+        
+        try {
+            Integer tableId = payload.containsKey("table_id") ? ((Number) payload.get("table_id")).intValue() : null;
+            String tableKey = (String) payload.get("table_key");
+            
+            @SuppressWarnings("unchecked")
+            List<Integer> orderIds = payload.containsKey("order_ids") ? 
+                (List<Integer>) payload.get("order_ids") : List.of();
+            
+            if (tableId == null || orderIds.isEmpty()) {
+                throw new RuntimeException("Thiếu table_id hoặc order_ids");
+            }
+            
+            log.info("✅ Parsed data - Table: {}, Orders: {}", tableId, orderIds);
+            
+            Map<String, Object> result = orderService.completePayment(tableId, tableKey, orderIds);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("❌ Error completing payment: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(
+                Map.of("success", false, "error", e.getMessage())
+            );
+        }
     }
 
     @PostMapping("/{id}/confirm")

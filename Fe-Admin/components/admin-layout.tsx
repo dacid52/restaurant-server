@@ -15,6 +15,7 @@ import {
     ChefHat,
     Package,
     Flame,
+    Scale,
 } from "lucide-react";
 import {
     Sidebar,
@@ -74,6 +75,11 @@ const menuItems = [
         title: "Kho",
         url: "/inventory",
         icon: Package,
+    },
+    {
+        title: "Định lượng",
+        url: "/portioning",
+        icon: Scale,
     },
 ];
 

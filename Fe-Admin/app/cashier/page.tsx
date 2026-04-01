@@ -255,12 +255,18 @@ export default function CashierPage() {
 
         setIsProcessing(true);
         try {
-            await api.post("/payments/process/cash", {
+            const payload = {
                 order_id: selectedPayment.order_id,
                 table_id: selectedPayment.table_id,
                 table_key: selectedPayment.table_key,
-            });
-
+            };
+            
+            console.log("📤 Sending payment processing request:", payload);
+            
+            const response = await api.post("/payments/process/cash", payload);
+            
+            console.log("✅ Payment processed successfully:", response.data);
+            
             toast.success("Thanh toán thành công", {
                 description: `Bàn ${selectedPayment.table_id} đã được thanh toán và giải phóng.`,
             });
@@ -270,10 +276,20 @@ export default function CashierPage() {
 
             setPaymentDialogOpen(false);
             setSelectedPayment(null);
-        } catch (error) {
-            console.error("Payment error:", error);
+        } catch (error: any) {
+            console.error("❌ Payment error:", error);
+            
+            // Extract error details
+            const errorMessage = error.response?.data?.error || 
+                                error.response?.data?.message || 
+                                error.message || 
+                                "Không rõ lỗi";
+            const errorStatus = error.response?.status || "unknown";
+            
+            console.error(`❌ Error status: ${errorStatus}, message: ${errorMessage}`);
+            
             toast.error("Thanh toán thất bại", {
-                description: "Đã xảy ra lỗi khi xử lý thanh toán.",
+                description: `(${errorStatus}) ${errorMessage}`,
             });
         } finally {
             setIsProcessing(false);

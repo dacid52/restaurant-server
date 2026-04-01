@@ -2,6 +2,7 @@ package com.restaurant.orderservice.service;
 
 import com.restaurant.orderservice.client.KitchenClient;
 import com.restaurant.orderservice.client.MenuClient;
+import com.restaurant.orderservice.client.PaymentClient;
 import com.restaurant.orderservice.client.TableClient;
 import com.restaurant.orderservice.dto.OrderItemDto;
 import com.restaurant.orderservice.dto.OrderRequest;
@@ -29,11 +30,16 @@ public class OrderService {
     private final TableClient tableClient;
     private final MenuClient menuClient;
     private final KitchenClient kitchenClient;
+    private final PaymentClient paymentClient;
     private final SocketService socketService;
 
     @Transactional
     public Order createOrder(OrderRequest request) {
         boolean isStaffRequest = request.getUser_id() != null;
+        
+        log.info("🛒 Creating order - Table: {}, Is Buffet: {}, Items: {}", 
+                request.getTable_id(), request.getIs_buffet(), 
+                request.getItems() != null ? request.getItems().size() : "NULL");
 
         if (!isStaffRequest && request.getTable_key() == null) {
             throw new RuntimeException("Thiếu table_key");
@@ -56,28 +62,41 @@ public class OrderService {
                 .map(OrderItemDto::getFood_id)
                 .distinct()
                 .collect(Collectors.toList());
+        
+        log.info("🍽️ Food IDs from request: {}", foodIds);
 
         Map<Integer, BigDecimal> foodPriceMap = new HashMap<>();
         if (!foodIds.isEmpty()) {
             try {
                 foodPriceMap = menuClient.getFoodPrices(foodIds);
+                log.info("✅ Got prices from menu-service: {}", foodPriceMap);
             } catch (Exception e){
-                log.warn("Lỗi get food prices, giả lập giá default");
+                log.warn("⚠️ Lỗi get food prices, giả lập giá default: {}", e.getMessage());
                 for (Integer id : foodIds) {
                     foodPriceMap.put(id, new BigDecimal("100000"));
                 }
             }
+        } else {
+            log.warn("⚠️ foodIds is empty!");
         }
 
         BigDecimal total = BigDecimal.ZERO;
         if (Boolean.TRUE.equals(request.getIs_buffet())) {
              total = request.getBuffet_price() != null ? request.getBuffet_price() : new BigDecimal("299000");
+             log.info("📊 Buffet order - Price: {}", total);
         } else {
              for (OrderItemDto item : request.getItems()) {
                  BigDecimal price = foodPriceMap.get(item.getFood_id());
-                 if (price == null) throw new RuntimeException("Không tìm thấy món " + item.getFood_id());
-                 total = total.add(price.multiply(new BigDecimal(item.getQuantity())));
+                 if (price == null) {
+                     log.error("❌ Food not found in price map - Food ID: {}, Available IDs: {}", item.getFood_id(), foodPriceMap.keySet());
+                     throw new RuntimeException("Không tìm thấy món " + item.getFood_id());
+                 }
+                 BigDecimal itemTotal = price.multiply(new BigDecimal(item.getQuantity()));
+                 total = total.add(itemTotal);
+                 log.info("📦 Adding item - Food ID: {}, Price: {}, Quantity: {}, Item Total: {}", 
+                         item.getFood_id(), price, item.getQuantity(), itemTotal);
              }
+             log.info("✅ Order total calculated: {} from {} items", total, request.getItems().size());
         }
 
         Order order = new Order();
@@ -181,4 +200,88 @@ public class OrderService {
         payload.put("status", savedOrder.getStatus());
         socketService.emitOrderStatusUpdated(savedOrder.getTableId(), payload);
     }
+
+    @Transactional
+    public void requestPayment(@NonNull Integer orderId) {
+        Order order = getOrderById(orderId);
+        
+        log.info("🔔 Yêu cầu thanh toán - Order ID: {}, Total: {}, Items count: {}", 
+                orderId, order.getTotal(), order.getDetails() != null ? order.getDetails().size() : 0);
+        
+        // 🔍 Debug: Check order details
+        if (order.getDetails() != null && !order.getDetails().isEmpty()) {
+            log.info("📋 Order details:");
+            order.getDetails().forEach(detail -> 
+                log.info("  - Food ID: {}, Quantity: {}, Price: {}", 
+                    detail.getFoodId(), detail.getQuantity(), detail.getPrice())
+            );
+        } else {
+            log.warn("⚠️ Order has NO details!");
+        }
+        
+        // Validate total before sending
+        if (order.getTotal() == null || order.getTotal().compareTo(BigDecimal.ZERO) == 0) {
+            log.warn("⚠️ Order total is 0 or null! Order ID: {}, Total: {}", orderId, order.getTotal());
+        }
+        
+        // Proxy to Payment Service
+        Map<String, Object> req = new HashMap<>();
+        req.put("order_id", order.getId());
+        req.put("table_id", order.getTableId());
+        req.put("table_key", order.getTableKey());
+        req.put("amount", order.getTotal() != null ? order.getTotal() : BigDecimal.ZERO);
+        
+        log.info("📤 Payment request payload: {}", req);
+        
+        try {
+            paymentClient.requestPayment(req);
+            log.info("✅ Payment request sent successfully - Amount: {}", req.get("amount"));
+        } catch (Exception e) {
+            log.error("Lỗi khi gửi yêu cầu thanh toán tới payment-service: {}", e.getMessage(), e);
+            throw new RuntimeException("Lỗi hệ thống khi yêu cầu thanh toán. Vui lòng thử lại.");
+        }
+    }
+
+    @Transactional
+    public Map<String, Object> completePayment(Integer tableId, String tableKey, List<Integer> orderIds) {
+        log.info("💳 Completing payment - Table: {}, Orders: {}", tableId, orderIds);
+        
+        if (tableId == null) {
+            throw new RuntimeException("Thiếu thông tin bàn (table_id)");
+        }
+
+        // 1️⃣ Mark all orders as paid
+        List<Order> orders = orderRepository.findAllById(orderIds);
+        for (Order order : orders) {
+            order.setPaymentStatus("paid");
+            orderRepository.save(order);
+            log.info("✅ Order {} marked as paid", order.getId());
+        }
+
+        // 2️⃣ Invalidate table key
+        try {
+            tableClient.invalidateTableKey(tableId);
+            log.info("🔒 Table key invalidated for table: {}", tableId);
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to invalidate table key: {}", e.getMessage());
+        }
+
+        // 3️⃣ Update table status to empty
+        try {
+            tableClient.updateTableStatus(tableId, "Trống", false);
+            log.info("🧹 Table {} marked as empty", tableId);
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to update table status: {}", e.getMessage());
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("message", "Đã hoàn tất thanh toán và đóng bàn");
+        result.put("order_ids", orderIds);
+        result.put("table_id", tableId);
+
+        log.info("✅ Payment completed successfully - Table {} is now empty", tableId);
+        return result;
+    }
 }
+

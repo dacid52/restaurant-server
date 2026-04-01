@@ -45,4 +45,10 @@ public interface KitchenQueueRepository extends JpaRepository<KitchenQueue, Inte
             "JOIN OrderDB.order_details od ON kq.order_detail_id = od.id " +
             "WHERE od.order_id = :orderId", nativeQuery = true)
     List<String> findAllStatusesForOrder(@Param("orderId") Integer orderId);
+
+    @Query(value = "SELECT od.food_id as foodId, od.quantity as quantity " +
+            "FROM KitchenDB.kitchen_queue kq " +
+            "JOIN OrderDB.order_details od ON kq.order_detail_id = od.id " +
+            "WHERE kq.id = :id", nativeQuery = true)
+    Map<String, Object> findFoodIdAndQuantityByQueueId(@Param("id") Integer id);
 }

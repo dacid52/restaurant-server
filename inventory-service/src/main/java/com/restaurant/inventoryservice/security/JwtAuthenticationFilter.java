@@ -24,10 +24,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
+        // Allow internal Feign calls from other microservices (e.g. kitchen-service batch-deduct)
+        if ("true".equals(request.getHeader("X-Internal-Call"))) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String path = request.getRequestURI();
 
-        // Internally called by Feign (Menu Service) 
+        // Also bypass /details path (legacy, keep for safety)
         if (path.contains("/details")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // GET requests are public
+        if (request.getMethod().equals("GET")) {
             filterChain.doFilter(request, response);
             return;
         }
