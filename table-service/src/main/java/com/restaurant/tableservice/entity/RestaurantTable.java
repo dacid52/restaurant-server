@@ -21,4 +21,8 @@ public class RestaurantTable {
 
     @Column(name = "is_buffet")
     private Boolean isBuffet = false;
+
+    /** Sức chứa tối đa (số ghế). Null = chưa cấu hình. */
+    @Column(name = "capacity")
+    private Integer capacity;
 }

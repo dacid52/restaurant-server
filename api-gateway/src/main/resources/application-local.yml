@@ -1,2 +1,21 @@
 server:
   port: 3000
+
+spring:
+  cloud:
+    gateway:
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            # Local dev: cho phép tất cả origin (localhost + mọi LAN IP)
+            # "*" là wildcard đặc biệt của Spring, khác allowedOrigins("*") — hoạt động đúng với allowCredentials: true
+            allowedOriginPatterns:
+              - "*"
+            allowCredentials: true
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"

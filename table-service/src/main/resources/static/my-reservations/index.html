@@ -38,6 +38,7 @@
     const STATUS_LABELS = {
       pending: 'Chờ xác nhận',
       confirmed: 'Đã xác nhận',
+      serving: 'Đang phục vụ',
       cancelled: 'Đã hủy',
       completed: 'Hoàn thành',
       no_show: 'Không đến',
@@ -45,10 +46,17 @@
     const STATUS_COLORS = {
       pending:   'bg-yellow-100 text-yellow-800',
       confirmed: 'bg-green-100 text-green-800',
+      serving:   'bg-purple-100 text-purple-800',
       cancelled: 'bg-red-100 text-red-800',
       completed: 'bg-blue-100 text-blue-800',
       no_show:   'bg-gray-100 text-gray-800',
     };
+
+    function escHtml(str) {
+      const d = document.createElement('div');
+      d.appendChild(document.createTextNode(String(str ?? '')));
+      return d.innerHTML;
+    }
 
     function formatDT(s) {
       return new Date(s).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -67,10 +75,10 @@
           <div class="bg-white border rounded-xl shadow-sm p-5">
             <div class="flex items-start justify-between gap-3">
               <div>
-                <p class="font-semibold text-gray-800">Bàn #${r.tableId}</p>
-                <p class="text-sm text-gray-500 mt-0.5">${formatDT(r.startTime)} – ${formatDT(r.endTime)}</p>
-                <p class="text-sm text-gray-500">${r.partySize} khách</p>
-                ${r.isBuffet ? '<p class="text-sm text-orange-600 font-medium mt-1">🍽️ Buffet</p>' : ''}
+                <p class="font-semibold text-gray-800">Bàn #${r.table_id}</p>
+                <p class="text-sm text-gray-500 mt-0.5">${formatDT(r.start_time)} – ${formatDT(r.end_time)}</p>
+                <p class="text-sm text-gray-500">${r.party_size} khách</p>
+                ${r.is_buffet ? '<p class="text-sm text-orange-600 font-medium mt-1">🍽️ Buffet</p>' : ''}
                 ${r.notes ? `<p class="text-sm text-gray-400 mt-1 italic">"${escHtml(r.notes)}"</p>` : ''}
               </div>
               <span class="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${STATUS_COLORS[r.status] || 'bg-gray-100 text-gray-600'}">

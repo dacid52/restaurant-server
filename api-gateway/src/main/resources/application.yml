@@ -30,6 +30,9 @@ spring:
             allowedHeaders: "*"
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+        # Strip Origin trước khi forward đến backend — CORS chỉ do Gateway xử lý.
+        # Backend services không cần CORS config, tránh double-block khi truy cập qua LAN IP.
+        - RemoveRequestHeader=Origin
       routes:
         - id: user-service
           uri: http://localhost:3005

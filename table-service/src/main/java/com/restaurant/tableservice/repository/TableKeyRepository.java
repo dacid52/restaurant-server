@@ -10,9 +10,17 @@ import java.util.List;
 
 public interface TableKeyRepository extends JpaRepository<TableKey, Integer> {
     List<TableKey> findByTableIdAndIsValidTrueOrderByCreatedAtDesc(Integer tableId);
-    
+
+    /** Tìm key đang còn hiệu lực (is_valid=true VÀ chưa hết hạn). */
     @Query("SELECT k FROM TableKey k WHERE k.tableId = :tableId AND k.keyValue = :keyValue AND k.isValid = true AND k.expiresAt > CURRENT_TIMESTAMP")
     List<TableKey> findValidKey(@Param("tableId") Integer tableId, @Param("keyValue") String keyValue);
+
+    /**
+     * Tra cứu key bất kể trạng thái — dùng để phân biệt "key expired/invalidate" vs "key không tồn tại".
+     * Chỉ cần Optional để biết key có từng được tạo không.
+     */
+    @Query("SELECT k FROM TableKey k WHERE k.tableId = :tableId AND k.keyValue = :keyValue ORDER BY k.createdAt DESC")
+    java.util.Optional<TableKey> findByTableIdAndKeyValue(@Param("tableId") Integer tableId, @Param("keyValue") String keyValue);
 
     @Modifying
     @Query("UPDATE TableKey k SET k.isValid = false WHERE k.tableId = :tableId AND k.isValid = true")

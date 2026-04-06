@@ -605,8 +605,8 @@ export default function CashierPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {payHistory.map((ph: PaymentHistory) => (
-                                            <TableRow key={ph.id}>
+                                        {payHistory.map((ph: PaymentHistory, idx: number) => (
+                                            <TableRow key={ph.id ?? `ph-${idx}`}>
                                                 <TableCell><span className="font-mono text-xs">TXN-{ph.id}</span></TableCell>
                                                 <TableCell>Order #{ph.order_id}</TableCell>
                                                 <TableCell><span className="font-semibold text-green-600">+{formatCurrency(ph.amount)}</span></TableCell>

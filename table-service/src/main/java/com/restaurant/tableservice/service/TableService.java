@@ -178,7 +178,7 @@ public class TableService {
     }
 
     @Transactional
-    public RestaurantTable updateTable(@NonNull Integer id, String name, String status, Boolean isBuffet) {
+    public RestaurantTable updateTable(@NonNull Integer id, String name, String status, Boolean isBuffet, Integer capacity) {
         RestaurantTable existing = getTableById(id);
         if (name != null) existing.setName(name);
 
@@ -194,6 +194,7 @@ public class TableService {
         }
 
         if (isBuffet != null) existing.setIsBuffet(isBuffet);
+        if (capacity != null && capacity > 0) existing.setCapacity(capacity);
         return tableRepository.save(existing);
     }
 
@@ -205,34 +206,107 @@ public class TableService {
         tableRepository.deleteById(id);
     }
 
+    /**
+     * Checkin nghiệp vụ: khách đến nhận bàn theo đơn đã confirmed.
+     *
+     * Các bước:
+     *  1. Tìm reservation theo id, kiểm tra status = confirmed.
+     *  2. Đơn không được quá giờ kết thúc (grace +30 phút).
+     *  3. Tạo dynamic QR key cho bàn (expiry thông minh nếu có reservation khác sau đó).
+     *  4. Cập nhật reservation → status = "serving".
+     *
+     * Response trả thêm: reservation_id, customer_name, table_name (ngoài QR fields chuẩn).
+     */
     @Transactional
-    public Boolean validateTableKey(@NonNull Integer tableId, @NonNull String tableKey, String deviceSession) {
+    public Map<String, Object> checkinReservation(@NonNull Integer reservationId) {
+        com.restaurant.tableservice.entity.TableReservation reservation =
+                tableReservationRepository.findById(reservationId)
+                        .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn đặt bàn"));
+
+        if (!"confirmed".equals(reservation.getStatus())) {
+            throw new RuntimeException("Chỉ có thể nhận bàn cho đơn đã xác nhận (confirmed). "
+                    + "Trạng thái hiện tại: " + reservation.getStatus());
+        }
+
+        // Grace period: cho phép check-in tối đa 30 phút sau giờ kết thúc dự kiến
+        LocalDateTime deadline = reservation.getEndTime().plusMinutes(30);
+        if (LocalDateTime.now().isAfter(deadline)) {
+            String endStr = reservation.getEndTime().format(DateTimeFormatter.ofPattern("HH:mm dd/MM"));
+            throw new RuntimeException("Đơn đặt bàn đã quá giờ kết thúc (" + endStr + "). Vui lòng tạo đặt bàn mới.");
+        }
+
+        // Tạo QR động — tự xử lý expiry thông minh dựa vào reservation sắp tới kế tiếp
+        Map<String, Object> qrResult = generateDynamicQRCode(reservation.getTableId());
+
+        // Cập nhật trạng thái reservation → đang phục vụ
+        reservation.setStatus("serving");
+        tableReservationRepository.save(reservation);
+
+        RestaurantTable table = getTableById(reservation.getTableId());
+
+        Map<String, Object> result = new HashMap<>(qrResult);
+        result.put("reservation_id", reservationId);
+        result.put("customer_name", reservation.getCustomerName());
+        result.put("customer_phone", reservation.getCustomerPhone());
+        result.put("party_size", reservation.getPartySize());
+        result.put("table_name", table.getName());
+        return result;
+    }
+
+    /**
+     * Xác thực table key của khách gọi món tại bàn.
+     *
+     * Response fields:
+     *   valid           – true nếu phiên hợp lệ
+     *   reason          – "ok" | "not_found" | "expired" | "taken"
+     *   seconds_remaining – giây còn lại của phiên (0 nếu invalid)
+     *   expires_at      – LocalDateTime hết hạn (chỉ có khi valid = true)
+     */
+    @Transactional
+    public Map<String, Object> validateTableKey(@NonNull Integer tableId,
+                                                @NonNull String tableKey,
+                                                String deviceSession) {
         List<TableKey> keys = tableKeyRepository.findValidKey(tableId, tableKey);
-        if (keys.isEmpty()) return false;
+        if (keys.isEmpty()) {
+            // Phân biệt "hết hạn / bị invalidate" vs "key chưa bao giờ tồn tại"
+            String reason = tableKeyRepository.findByTableIdAndKeyValue(tableId, tableKey).isPresent()
+                    ? "expired"
+                    : "not_found";
+            return Map.of("valid", false, "reason", reason, "seconds_remaining", 0);
+        }
 
         TableKey key = keys.get(0);
 
+        // --- Device-session binding (chống 1 QR dùng trên nhiều thiết bị) ---
         if (deviceSession != null) {
             if (key.getDeviceSession() == null) {
-                // BUG-005: Atomic claim — tránh 2 thiết bị claim cùng lúc
+                // Atomic claim — tránh race condition 2 thiết bị cùng claim
                 int claimed = tableKeyRepository.claimDeviceSession(key.getId(), deviceSession);
                 if (claimed == 0) {
-                    // Claim thất bại → re-fetch để kiểm tra ai đã claim
                     key = tableKeyRepository.findById(key.getId()).orElse(key);
-                    if (!deviceSession.equals(key.getDeviceSession())) return false;
+                    if (!deviceSession.equals(key.getDeviceSession())) {
+                        return Map.of("valid", false, "reason", "taken", "seconds_remaining", 0);
+                    }
                 }
             } else if (!key.getDeviceSession().equals(deviceSession)) {
-                return false;
+                return Map.of("valid", false, "reason", "taken", "seconds_remaining", 0);
             }
         }
 
+        // --- Cập nhật trạng thái bàn sang "Đang sử dụng" nếu chưa ---
         RestaurantTable table = getTableById(tableId);
         if (!"Đang sử dụng".equals(table.getStatus())) {
             table.setStatus("Đang sử dụng");
             tableRepository.save(table);
         }
 
-        return true;
+        long secondsRemaining = Duration.between(LocalDateTime.now(), key.getExpiresAt()).toSeconds();
+        Map<String, Object> result = new HashMap<>();
+        result.put("valid", true);
+        result.put("reason", "ok");
+        result.put("seconds_remaining", Math.max(0, secondsRemaining));
+        result.put("expires_at", key.getExpiresAt());
+        return result;
     }
 
     @Transactional
@@ -248,7 +322,9 @@ public class TableService {
     public Map<String, Object> generateStaticQRCode(@NonNull Integer id) {
         RestaurantTable table = getTableById(id);
         String localIP = getLocalIpAddress();
-        String qrUrl = "http://" + localIP + ":4000/api/tables/" + id + "/generate-access";
+        // Static QR trỏ thẳng đến endpoint generate-access trên table-service (:3011).
+        // Khi khách quét, /generate-access sẽ tạo key mới rồi redirect sang index.html.
+        String qrUrl = "http://" + localIP + ":3011/api/tables/" + id + "/generate-access";
 
         Map<String, Object> res = new HashMap<>();
         res.put("table_id", id);

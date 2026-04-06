@@ -15,15 +15,13 @@ public class WebConfig implements WebMvcConfigurer {
     public WebConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
-    // BUG-029: Giới hạn CORS chỉ cho các origin đã biết
+    // table-service là internal service sau API Gateway.
+    // Gateway đã enforce CORS origin policy với external clients.
+    // Tại đây cho phép mọi origin để không bị double-block khi request đến qua LAN IP.
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOriginPatterns(
-                        "http://localhost:3010",
-                        "http://localhost:3011",
-                        "http://localhost:3000"
-                )
+                .allowedOriginPatterns("*")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)

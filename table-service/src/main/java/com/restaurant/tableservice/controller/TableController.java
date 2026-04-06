@@ -116,6 +116,22 @@ public class TableController {
         return ResponseEntity.ok(tableService.updateReservationStatus(reservationId, status));
     }
 
+    /**
+     * Nhận bàn (check-in): khách đã đặt bàn (confirmed) đến nhận bàn thực tế.
+     *
+     * Luồng:
+     *   Staff bấm "Nhận bàn" trên admin FE
+     *   → Backend tạo QR key cho bàn + cập nhật reservation → serving
+     *   → Admin FE hiển thị QR cho khách quét để bắt đầu gọi món
+     *
+     * Response: tất cả fields của /qr/dynamic + reservation_id, customer_name, table_name
+     */
+    @PostMapping("/reservations/{reservationId}/checkin")
+    public ResponseEntity<Map<String, Object>> checkinReservation(
+            @PathVariable @NonNull Integer reservationId) {
+        return ResponseEntity.ok(tableService.checkinReservation(reservationId));
+    }
+
     @PostMapping
     public ResponseEntity<RestaurantTable> createTable(@RequestBody @NonNull RestaurantTable table) {
         return ResponseEntity.status(HttpStatus.CREATED).body(tableService.createTable(table));
@@ -125,8 +141,10 @@ public class TableController {
     public ResponseEntity<RestaurantTable> updateTable(@PathVariable @NonNull Integer id, @RequestBody Map<String, Object> payload) {
         String name = (String) payload.get("name");
         String status = (String) payload.get("status");
-        Boolean isBuffet = payload.containsKey("is_buffet") ? (Boolean) payload.get("is_buffet") : null;
-        return ResponseEntity.ok(tableService.updateTable(id, name, status, isBuffet));
+        Boolean isBuffet = payload.containsKey("is_buffet") ? (Boolean) payload.get("is_buffet")
+                         : payload.containsKey("isBuffet") ? (Boolean) payload.get("isBuffet") : null;
+        Integer capacity = payload.get("capacity") != null ? ((Number) payload.get("capacity")).intValue() : null;
+        return ResponseEntity.ok(tableService.updateTable(id, name, status, isBuffet, capacity));
     }
 
     @DeleteMapping("/{id}")
@@ -135,15 +153,30 @@ public class TableController {
         return ResponseEntity.ok().build();
     }
 
-    // Key validation endpoints accessed by other services or directly internally
-    @GetMapping("/{id}/validate-key")
-    public ResponseEntity<Boolean> validateTableKey(@PathVariable @NonNull Integer id, @RequestParam @NonNull String tableKey, @RequestParam(required = false) String deviceSession) {
+    /**
+     * Xác thực table key cho khách dine-in.
+     *
+     * Đổi sang POST để key không xuất hiện trong URL, server logs và browser history.
+     * Body: { "tableKey": "uuid", "deviceSession": "optional-device-id" }
+     * Response: { valid, reason, seconds_remaining, expires_at }
+     *   reason values: "ok" | "not_found" | "expired" | "taken"
+     */
+    @PostMapping("/{id}/validate-key")
+    public ResponseEntity<Map<String, Object>> validateTableKey(
+            @PathVariable @NonNull Integer id,
+            @RequestBody Map<String, Object> body) {
+        String tableKey = body.get("tableKey") != null ? body.get("tableKey").toString() : null;
+        String deviceSession = body.get("deviceSession") != null ? body.get("deviceSession").toString() : null;
+        if (tableKey == null || tableKey.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("valid", false, "reason", "missing_key", "seconds_remaining", 0));
+        }
         return ResponseEntity.ok(tableService.validateTableKey(id, tableKey, deviceSession));
     }
 
     @PutMapping("/{id}/status")
     public ResponseEntity<Void> updateTableStatus(@PathVariable @NonNull Integer id, @RequestParam String status, @RequestParam Boolean isBuffet) {
-        tableService.updateTable(id, null, status, isBuffet);
+        tableService.updateTable(id, null, status, isBuffet, null);
         return ResponseEntity.ok().build();
     }
     

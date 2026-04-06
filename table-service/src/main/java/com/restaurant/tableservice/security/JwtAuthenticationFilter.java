@@ -32,8 +32,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
-        // Allowed paths — không cần token
-        if (path.contains("validate-key") || path.contains("qr/static") || path.contains("qr/dynamic")) {
+        // OPTIONS preflight — phải pass qua ngay, không check JWT
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Các path không cần JWT — khách tại bàn truy cập mà không có tài khoản
+        if (path.contains("validate-key")
+                || path.contains("qr/static")
+                || path.contains("qr/dynamic")
+                || path.contains("generate-access")) {
             filterChain.doFilter(request, response);
             return;
         }

@@ -1,6 +1,7 @@
 const state = {
   tableId: null,
   tableKey: null,
+  deviceSession: null,   // lưu để dùng cho watchdog, không cần gọi lại getDeviceSession() nhiều lần
   table: null,
   menuCategories: [],
   buffetFoodCategories: [],
@@ -943,25 +944,34 @@ async function initApp() {
   state.tableId = params.tableId;
   state.tableKey = params.tableKey;
 
+  // Xử lý trường hợp static QR generate-access bị lỗi (VD: bàn đang có reservation sắp tới)
+  const accessError = new URLSearchParams(window.location.search).get('qr_access_error');
+  if (accessError) {
+    showInitError('access_blocked', decodeURIComponent(accessError));
+    return;
+  }
+
   if (!state.tableId || !state.tableKey) {
-    const loadingContent = document.querySelector('.loading-content');
-    if (loadingContent) {
-      loadingContent.innerHTML = '<div class="loading-logo">Aurora</div><p style="color:#e57373;margin-top:16px;font-size:14px;">Link QR không hợp lệ.<br>Vui lòng quét lại mã QR.</p>';
-    }
+    showInitError('not_found');
     console.error('Missing tableId or tableKey in URL', params);
     return;
   }
 
+  // Gắn deviceSession vào state một lần duy nhất
+  state.deviceSession = getDeviceSession();
+
   try {
-    // Validate key first and update table status to "Đang sử dụng"
-    const isValid = await fetchJson(
-      `/api/tables/${state.tableId}/validate-key?tableKey=${encodeURIComponent(state.tableKey)}&deviceSession=${encodeURIComponent(getDeviceSession())}`
-    );
-    if (!isValid) {
-      const loadingContent = document.querySelector('.loading-content');
-      if (loadingContent) {
-        loadingContent.innerHTML = '<div class="loading-logo">Aurora</div><p style="color:#e57373;margin-top:16px;font-size:14px;">Link QR đã hết hạn.<br>Vui lòng yêu cầu mã QR mới.</p>';
-      }
+    // --- Validate key bằng POST (key không lộ trong URL/logs) ---
+    const sessionResult = await fetchJson(`/api/tables/${state.tableId}/validate-key`, {
+      method: 'POST',
+      body: JSON.stringify({
+        tableKey: state.tableKey,
+        deviceSession: state.deviceSession,
+      }),
+    });
+
+    if (!sessionResult.valid) {
+      showInitError(sessionResult.reason);
       return;
     }
 
@@ -974,11 +984,14 @@ async function initApp() {
     ]);
 
     initializeSocket();
-    
-    // Hide loading screen and show app
+
+    // Ẩn loading, hiện app
     document.getElementById('loading-screen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
-    
+
+    // Khởi động watchdog — phát hiện key expire / staff invalidate giữa phiên
+    startSessionWatchdog(sessionResult.seconds_remaining);
+
     console.log('App initialized successfully for table', state.tableId);
   } catch (error) {
     console.error('Initialization error:', error);
@@ -988,5 +1001,124 @@ async function initApp() {
     }
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// Session lifecycle helpers
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * showInitError — hiển thị lỗi trên màn hình loading (trước khi app hiện).
+ * @param {string} reason   – "not_found" | "expired" | "taken" | "access_blocked" | "missing_key"
+ * @param {string} [detail] – thông tin thêm cho một số lỗi
+ */
+function showInitError(reason, detail) {
+  const messages = {
+    expired:        'Link QR đã hết hạn.<br>Vui lòng yêu cầu mã QR mới từ nhân viên.',
+    taken:          'Mã QR này đang được sử dụng trên thiết bị khác.<br>Vui lòng liên hệ nhân viên.',
+    not_found:      'Link QR không hợp lệ.<br>Vui lòng quét lại mã QR.',
+    missing_key:    'Link QR thiếu thông tin.<br>Vui lòng quét lại mã QR.',
+    access_blocked: detail || 'Không thể mở phiên gọi món.<br>Vui lòng liên hệ nhân viên.',
+  };
+  const text = messages[reason] || messages.not_found;
+  const loadingContent = document.querySelector('.loading-content');
+  if (loadingContent) {
+    loadingContent.innerHTML = `<div class="loading-logo">Aurora</div><p style="color:#e57373;margin-top:16px;font-size:14px;">${text}</p>`;
+  }
+}
+
+/**
+ * startSessionWatchdog — poll validate-key mỗi 60 giây.
+ * Nếu phát hiện session không còn hợp lệ (hết giờ hoặc staff invalidate),
+ * hiện overlay "phiên đã kết thúc" và dừng polling.
+ * Lỗi mạng tạm thời KHÔNG kill session (chống mất kết nối WiFi ngắn).
+ *
+ * @param {number} initialSeconds – giây còn lại khi mới vào app (từ validate-key response)
+ */
+let _watchdogTimer = null;
+let _watchdogNetErrStreak = 0;
+const WATCHDOG_INTERVAL_MS      = 60_000;   // polling mỗi 60s
+const WATCHDOG_NET_ERR_TOLERANCE = 3;        // chịu tối đa 3 lỗi mạng liên tiếp (~3 phút)
+
+function startSessionWatchdog(initialSeconds) {
+  if (_watchdogTimer) clearInterval(_watchdogTimer);
+  _watchdogNetErrStreak = 0;
+
+  _watchdogTimer = setInterval(async () => {
+    try {
+      const result = await fetchJson(`/api/tables/${state.tableId}/validate-key`, {
+        method: 'POST',
+        body: JSON.stringify({
+          tableKey: state.tableKey,
+          deviceSession: state.deviceSession,
+        }),
+      });
+
+      _watchdogNetErrStreak = 0;  // reset khi thành công
+
+      if (!result.valid) {
+        clearInterval(_watchdogTimer);
+        _watchdogTimer = null;
+        showSessionEnded(result.reason);
+      }
+    } catch (e) {
+      // Lỗi mạng (wifi mất tạm, server restart...) — không kill session ngay
+      _watchdogNetErrStreak++;
+      console.warn(`[Watchdog] Network error (${_watchdogNetErrStreak}/${WATCHDOG_NET_ERR_TOLERANCE}):`, e.message);
+
+      if (_watchdogNetErrStreak >= WATCHDOG_NET_ERR_TOLERANCE) {
+        clearInterval(_watchdogTimer);
+        _watchdogTimer = null;
+        showSessionEnded('network_error');
+      }
+    }
+  }, WATCHDOG_INTERVAL_MS);
+}
+
+/**
+ * showSessionEnded — hiện overlay toàn màn hình khi phiên kết thúc giữa chừng.
+ * Khác với showInitError vì app đã hiển thị rồi.
+ * @param {string} reason – "expired" | "taken" | "not_found" | "network_error"
+ */
+function showSessionEnded(reason) {
+  if (_watchdogTimer) {
+    clearInterval(_watchdogTimer);
+    _watchdogTimer = null;
+  }
+
+  const messages = {
+    expired:       { title: 'Phiên đã kết thúc',       desc: 'Thời gian sử dụng bàn đã hết. Cảm ơn quý khách đã đến Aurora!' },
+    taken:         { title: 'Phiên bị thay thế',        desc: 'Phiên mới vừa được mở trên thiết bị khác. Vui lòng quét lại QR để tiếp tục.' },
+    not_found:     { title: 'Phiên không hợp lệ',       desc: 'Phiên gọi món đã bị đóng. Vui lòng liên hệ nhân viên nếu cần hỗ trợ.' },
+    network_error: { title: 'Mất kết nối',              desc: 'Không thể xác minh phiên sau nhiều lần thử. Vui lòng kiểm tra wifi và tải lại trang.' },
+  };
+  const msg = messages[reason] || messages.not_found;
+
+  // Xóa overlay cũ nếu có (trường hợp gọi 2 lần)
+  document.getElementById('session-ended-overlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'session-ended-overlay';
+  overlay.style.cssText = [
+    'position:fixed',
+    'inset:0',
+    'background:rgba(10,10,10,0.93)',
+    'z-index:9999',
+    'display:flex',
+    'flex-direction:column',
+    'align-items:center',
+    'justify-content:center',
+    'padding:32px',
+    'text-align:center',
+    'backdrop-filter:blur(4px)',
+  ].join(';');
+  overlay.innerHTML = `
+    <div style="font-size:52px;margin-bottom:20px;">🔒</div>
+    <h2 style="color:#fff;font-size:20px;font-weight:600;margin-bottom:12px;">${msg.title}</h2>
+    <p style="color:#999;font-size:15px;line-height:1.7;max-width:320px;">${msg.desc}</p>
+  `;
+  document.body.appendChild(overlay);
+}
+
+// ─────────────────────────────────────────────────────────────
 
 window.addEventListener('DOMContentLoaded', initApp);
