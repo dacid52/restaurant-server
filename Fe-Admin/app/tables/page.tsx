@@ -47,6 +47,25 @@ interface Table {
   updated_at?: string;
 }
 
+interface UpcomingReservation {
+  id: number;
+  startTime: string;
+  endTime: string;
+  customerName: string;
+  partySize: number;
+  status: string;
+}
+
+interface ActiveKeyInfo {
+  expiresAt: string;
+  secondsRemaining: number;
+}
+
+interface TableEnrichment {
+  upcoming?: UpcomingReservation;
+  activeKey?: ActiveKeyInfo;
+}
+
 export default function TableManagementPage() {
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +77,11 @@ export default function TableManagementPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
+  const [qrWarning, setQrWarning] = useState<string | null>(null);
+  const [qrExpiresAt, setQrExpiresAt] = useState<string | null>(null);
   const [showQRDialog, setShowQRDialog] = useState(false);
+  const [enrichments, setEnrichments] = useState<Map<string, TableEnrichment>>(new Map());
+  const [tick, setTick] = useState(0); // cập nhật mỗi giây cho countdown
 
   // Form state
   const [formData, setFormData] = useState<{
@@ -80,11 +103,19 @@ export default function TableManagementPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Countdown tick mỗi giây
+  useEffect(() => {
+    const timer = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const fetchTables = async () => {
     try {
       setError(null);
       const response = await api.get('/tables');
-      setTables(response.data || []);
+      const tableList: Table[] = response.data || [];
+      setTables(tableList);
+      fetchEnrichments(tableList);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to fetch tables';
@@ -93,6 +124,44 @@ export default function TableManagementPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchEnrichments = async (tableList: Table[]) => {
+    const results = await Promise.allSettled(
+      tableList.map(async (table) => {
+        const [upcomingRes, activeKeyRes] = await Promise.allSettled([
+          api.get(`/tables/${table.id}/upcoming-reservation`).catch(() => null),
+          table.status === 'Đang sử dụng'
+            ? api.get(`/tables/${table.id}/active-key`).catch(() => null)
+            : Promise.resolve(null),
+        ]);
+        return {
+          tableId: table.id,
+          upcoming:
+            upcomingRes.status === 'fulfilled' && upcomingRes.value?.data
+              ? (upcomingRes.value.data as UpcomingReservation)
+              : undefined,
+          activeKey:
+            activeKeyRes.status === 'fulfilled' && activeKeyRes.value?.data
+              ? ({
+                  expiresAt: activeKeyRes.value.data.expires_at,
+                  secondsRemaining: activeKeyRes.value.data.seconds_remaining,
+                } as ActiveKeyInfo)
+              : undefined,
+        };
+      })
+    );
+
+    const map = new Map<string, TableEnrichment>();
+    results.forEach((r) => {
+      if (r.status === 'fulfilled') {
+        map.set(r.value.tableId, {
+          upcoming: r.value.upcoming,
+          activeKey: r.value.activeKey,
+        });
+      }
+    });
+    setEnrichments(map);
   };
 
   const handleCreateTable = async () => {
@@ -178,8 +247,14 @@ export default function TableManagementPage() {
     try {
       const response = await api.post(`/tables/${selectedTable.id}/qr/dynamic`);
       setQrCode(response.data?.qr_code || response.data?.url);
+      setQrWarning(response.data?.warning || null);
+      setQrExpiresAt(response.data?.expires_at || null);
       setShowQRDialog(true);
-      toast.success('Tạo QR code thành công');
+      if (response.data?.warning) {
+        toast.warning(response.data.warning);
+      } else {
+        toast.success('Tạo QR code thành công');
+      }
     } catch (err) {
       const errorMsg =
         err instanceof Error ? err.message : 'Failed to generate QR';
@@ -234,6 +309,32 @@ export default function TableManagementPage() {
     }
     
     return <Badge variant={config.variant as any}>{config.label}</Badge>;
+  };
+
+  // Tính countdown từ expiresAt (dùng tick để re-render mỗi giây)
+  const formatCountdown = (expiresAt: string): string => {
+    void tick; // lệ thuộc tick để re-render
+    const diff = Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000));
+    if (diff <= 0) return 'Hết phiên';
+    const h = Math.floor(diff / 3600);
+    const m = Math.floor((diff % 3600) / 60);
+    const s = diff % 60;
+    if (h > 0) return `${h}g ${m.toString().padStart(2, '0')}p ${s.toString().padStart(2, '0')}s`;
+    return `${m}p ${s.toString().padStart(2, '0')}s`;
+  };
+
+  const formatTime = (isoStr: string): string => {
+    return new Date(isoStr).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDate = (isoStr: string): string => {
+    const d = new Date(isoStr);
+    const today = new Date();
+    if (d.toDateString() === today.toDateString()) return 'Hôm nay';
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    if (d.toDateString() === tomorrow.toDateString()) return 'Ngày mai';
+    return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
   };
 
   const filteredTables = tables.filter((table) =>
@@ -355,7 +456,9 @@ export default function TableManagementPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredTables.map((table) => (
+          {filteredTables.map((table) => {
+            const enrich = enrichments.get(table.id);
+            return (
             <div
               key={table.id}
               className="bg-card border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer group"
@@ -376,9 +479,38 @@ export default function TableManagementPage() {
                   </div>
                 </div>
                 <div>{getStatusBadge(table.status)}</div>
+
+                {/* Countdown khi bàn đang sử dụng */}
+                {enrich?.activeKey && (
+                  <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-md px-2 py-1.5">
+                    <span className="text-xs">⏱️</span>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-semibold text-red-700 tabular-nums">
+                        {formatCountdown(enrich.activeKey.expiresAt)}
+                      </span>
+                      <span className="text-[10px] text-red-500">còn lại trong phiên</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Reservation sắp tới */}
+                {enrich?.upcoming && (
+                  <div className="flex items-start gap-1.5 bg-blue-50 border border-blue-200 rounded-md px-2 py-1.5">
+                    <span className="text-xs mt-0.5">📅</span>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-semibold text-blue-700">
+                        {formatDate(enrich.upcoming.startTime)} {formatTime(enrich.upcoming.startTime)}
+                      </span>
+                      <span className="text-[10px] text-blue-600 truncate max-w-[140px]">
+                        {enrich.upcoming.customerName} · {enrich.upcoming.partySize} khách
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -510,7 +642,7 @@ export default function TableManagementPage() {
       </AlertDialog>
 
       {/* QR Code Dialog */}
-      <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
+      <Dialog open={showQRDialog} onOpenChange={(open) => { setShowQRDialog(open); if (!open) { setQrWarning(null); setQrExpiresAt(null); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>QR Code cho bàn {selectedTable?.name}</DialogTitle>
@@ -518,6 +650,20 @@ export default function TableManagementPage() {
               Sử dụng QR code này cho bàn
             </DialogDescription>
           </DialogHeader>
+          {qrWarning && (
+            <div className="bg-amber-50 border border-amber-300 text-amber-800 rounded-lg px-3 py-2 text-sm flex gap-2">
+              <span>⚠️</span>
+              <span>{qrWarning}</span>
+            </div>
+          )}
+          {qrExpiresAt && (
+            <div className="text-center text-sm text-muted-foreground">
+              Key hết hạn lúc{' '}
+              <span className="font-semibold text-foreground">
+                {new Date(qrExpiresAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          )}
           {qrCode && (
             <div className="flex justify-center p-4">
               <img

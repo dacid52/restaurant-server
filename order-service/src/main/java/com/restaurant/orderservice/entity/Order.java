@@ -40,6 +40,15 @@ public class Order {
     @Column(name = "is_buffet")
     private Boolean isBuffet;
 
+    @Column(name = "buffet_session_id", length = 255)
+    private String buffetSessionId;
+
+    @Column(name = "buffet_package_id")
+    private Integer buffetPackageId;
+
+    @Column(name = "buffet_package_name", length = 255)
+    private String buffetPackageName;
+
     @Column(name = "payment_status", length = 50)
     private String paymentStatus;
 

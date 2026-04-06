@@ -38,6 +38,15 @@ public class User {
     @Column(length = 255)
     private String address;
 
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
+    @Column(name = "email_verification_token", length = 255)
+    private String emailVerificationToken;
+
+    @Column(name = "email_verification_expires_at")
+    private LocalDateTime emailVerificationExpiresAt;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

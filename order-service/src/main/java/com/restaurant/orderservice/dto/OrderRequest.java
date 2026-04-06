@@ -13,5 +13,8 @@ public class OrderRequest {
     private String table_key;
     private Boolean is_buffet;
     private BigDecimal buffet_price;
+    private String buffet_session_id;
+    private Integer buffet_package_id;
+    private String buffet_package_name;
     private List<OrderItemDto> items;
 }

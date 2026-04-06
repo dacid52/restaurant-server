@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/lib/axios";
+import { kitchenSocket } from "@/lib/socket";
 import {
   Clock,
   ChefHat,
@@ -75,6 +76,50 @@ export default function KitchenPage() {
   } = useSWR<KitchenStats>("/kitchen/stats", fetcher, {
     refreshInterval: 5000,
   });
+
+  useEffect(() => {
+    let mounted = true;
+
+    kitchenSocket.connect(
+      () => {
+        if (!mounted) return;
+
+        const refreshAll = () => {
+          mutateQueue();
+          mutateStats();
+        };
+
+        kitchenSocket.subscribe("/topic/kitchen.queue-updated", () => {
+          if (!mounted) return;
+          refreshAll();
+        });
+
+        kitchenSocket.subscribe("/topic/kitchen.new-order", () => {
+          if (!mounted) return;
+          refreshAll();
+        });
+
+        kitchenSocket.subscribe("/topic/kitchen.cleared", () => {
+          if (!mounted) return;
+          refreshAll();
+        });
+
+        kitchenSocket.subscribe("/topic/kitchen.item-delivered", () => {
+          if (!mounted) return;
+          refreshAll();
+        });
+      },
+      (err) => {
+        if (!mounted) return;
+        console.error("Kitchen socket error", err);
+      }
+    );
+
+    return () => {
+      mounted = false;
+      kitchenSocket.disconnect();
+    };
+  }, [mutateQueue, mutateStats]);
 
   // Filter items based on active tab
   const filteredItems = queueItems.filter((item) => {

@@ -5,9 +5,9 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.lang.NonNull;
 
 import java.io.IOException;
 
@@ -36,8 +36,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-
-        // Allow internal notifications
         if (path.contains("/notify")) {
             filterChain.doFilter(request, response);
             return;
@@ -57,12 +55,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             request.setAttribute("userId", claims.get("id"));
             request.setAttribute("username", claims.get("username"));
             request.setAttribute("roleId", claims.get("role_id"));
-            
+
             Integer roleId = (Integer) claims.get("role_id");
-            // Admin (1), Manager (2) and Kitchen/Chef (usually 3 or 4) are allowed
-            if (roleId != 1 && roleId != 4) {
-                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                 return;
+            if (roleId != 1 && roleId != 2 && roleId != 4) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                return;
             }
 
         } catch (Exception e) {

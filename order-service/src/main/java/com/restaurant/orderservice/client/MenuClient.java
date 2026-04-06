@@ -13,4 +13,7 @@ public interface MenuClient {
 
     @GetMapping("/api/foods/prices")
     Map<Integer, BigDecimal> getFoodPrices(@RequestParam("foodIds") List<Integer> foodIds);
+
+    @GetMapping("/api/foods/names")
+    Map<Integer, String> getFoodNames(@RequestParam("foodIds") List<Integer> foodIds);
 }

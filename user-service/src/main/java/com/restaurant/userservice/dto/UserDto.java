@@ -14,6 +14,7 @@ public class UserDto {
     private Integer age;
     private String email;
     private String address;
+    private boolean emailVerified;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

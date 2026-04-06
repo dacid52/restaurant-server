@@ -38,7 +38,9 @@ public class PaymentService {
                         ? paymentRequestRepository.countUnpaidOrdersForSession(tableId, tableKey)
                         : 1;
 
-                if (orderCount == null || orderCount == 0) orderCount = 1;
+                if (orderCount == null || orderCount == 0) {
+                    orderCount = 1;
+                }
 
                 Map<String, Object> sessionData = new HashMap<>(req);
                 sessionData.put("order_count", orderCount);
@@ -47,11 +49,8 @@ public class PaymentService {
                 Map<String, Object> existing = sessionMap.get(sessionKey);
                 BigDecimal currentTotal = (BigDecimal) req.get("total");
                 BigDecimal existingTotal = (BigDecimal) existing.get("total");
-                
-                if (currentTotal.compareTo(existingTotal) > 0) {
-                    existing.put("total", currentTotal);
-                }
-                
+                existing.put("total", existingTotal.add(currentTotal));
+
                 LocalDateTime currentRequestTime = (LocalDateTime) req.get("request_time");
                 LocalDateTime existingRequestTime = (LocalDateTime) existing.get("request_time");
                 if (currentRequestTime.isBefore(existingRequestTime)) {
@@ -65,7 +64,7 @@ public class PaymentService {
     @Transactional
     public void createPaymentRequest(Integer orderId, Integer tableId, String tableKey, BigDecimal amount) {
         log.info("💾 Creating payment request - Order: {}, Table: {}, Amount: {}", orderId, tableId, amount);
-        
+
         Optional<PaymentRequest> existingOpt = paymentRequestRepository.findByOrderIdAndStatus(orderId, "waiting");
         if (existingOpt.isPresent()) {
             PaymentRequest existing = existingOpt.get();
@@ -83,13 +82,12 @@ public class PaymentService {
             log.info("✨ New payment request saved - ID: {}, Amount: {}", newRequest.getId(), newRequest.getTotal());
         }
 
-        // 🔔 Broadcost event to cashiers
         Map<String, Object> payload = new HashMap<>();
         payload.put("order_id", orderId);
         payload.put("table_id", tableId);
         payload.put("table_key", tableKey);
         payload.put("amount", amount);
-        
+
         log.info("📤 Broadcasting webhook payload: {}", payload);
         socketService.emitPaymentRequest(payload);
     }
@@ -97,51 +95,57 @@ public class PaymentService {
     @Transactional
     public Map<String, Object> processCashPayment(Integer orderId, Integer tableId, String tableKey, String authHeader) {
         log.info("💳 Processing cash payment - Order: {}, Table: {}, TableKey: {}", orderId, tableId, tableKey);
-        
+
         PaymentRequest request = paymentRequestRepository.findByOrderIdAndStatus(orderId, "waiting")
                 .orElseThrow(() -> {
                     log.error("❌ Payment request not found for order: {}", orderId);
                     return new RuntimeException("Không tìm thấy yêu cầu thanh toán");
                 });
-        
-        log.info("📋 Found payment request - ID: {}, Amount: {}", request.getId(), request.getTotal());
 
         Integer finalTableId = tableId != null ? tableId : request.getTableId();
         String finalTableKey = tableKey;
         if (finalTableKey == null) {
-            log.info("🔍 TableKey is null, fetching from order...");
             finalTableKey = paymentRequestRepository.getTableKeyForOrder(orderId);
-            log.info("✅ Fetched TableKey: {}", finalTableKey);
         }
 
         if (finalTableId == null || finalTableKey == null) {
-            log.error("❌ Missing data - TableId: {}, TableKey: {}", finalTableId, finalTableKey);
             throw new RuntimeException("Thiếu thông tin bàn hoặc table_key để hoàn tất thanh toán");
         }
 
-        request.setStatus("paid");
-        paymentRequestRepository.save(request);
-        log.info("✅ Payment request marked as paid");
+        List<Integer> allOrderIds = paymentRequestRepository.findWaitingOrderIdsForSession(finalTableId, finalTableKey);
+        if (allOrderIds == null || allOrderIds.isEmpty()) {
+            allOrderIds = List.of(orderId);
+        }
 
-        Payment payment = new Payment();
-        payment.setOrderId(orderId);
-        payment.setAmount(request.getTotal());
-        payment.setMethod("cash");
-        paymentRepository.save(payment);
-        log.info("💾 Payment record saved");
+        List<PaymentRequest> sessionRequests = paymentRequestRepository.findByOrderIdInAndStatus(allOrderIds, "waiting");
+        if (sessionRequests.isEmpty()) {
+            sessionRequests = List.of(request);
+        }
 
-        List<Integer> allOrderIds = List.of(orderId);
-        
+        BigDecimal sessionTotal = BigDecimal.ZERO;
+        for (PaymentRequest paymentRequest : sessionRequests) {
+            paymentRequest.setStatus("paid");
+            paymentRequestRepository.save(paymentRequest);
+
+            Payment payment = new Payment();
+            payment.setOrderId(paymentRequest.getOrderId());
+            payment.setAmount(paymentRequest.getTotal());
+            payment.setMethod("cash");
+            paymentRepository.save(payment);
+
+            sessionTotal = sessionTotal.add(paymentRequest.getTotal());
+        }
+
         try {
             Map<String, Object> payload = new HashMap<>();
             payload.put("table_id", finalTableId);
             payload.put("table_key", finalTableKey);
             payload.put("order_ids", allOrderIds);
-            
+
             log.info("📤 Calling order-service to complete payment...");
             Map<String, Object> completionRes = orderClient.completePayment(authHeader, payload);
             log.info("✅ Order service response: {}", completionRes);
-            
+
             if (completionRes.containsKey("order_ids")) {
                 @SuppressWarnings("unchecked")
                 List<Integer> fetchedIds = (List<Integer>) completionRes.get("order_ids");
@@ -152,21 +156,19 @@ public class PaymentService {
             throw new RuntimeException("Không thể hoàn tất phiên thanh toán tại order-service", e);
         }
 
-        // 🔔 Broadcost event to cashiers and customers
         Map<String, Object> wsPayload = new HashMap<>();
         wsPayload.put("request_id", request.getId());
         wsPayload.put("order_id", orderId);
+        wsPayload.put("order_ids", allOrderIds);
         wsPayload.put("table_id", finalTableId);
-        wsPayload.put("amount", request.getTotal());
+        wsPayload.put("amount", sessionTotal);
         socketService.emitPaymentCompleted(wsPayload);
-        log.info("📡 WebSocket payment_completed event broadcasted");
 
         Map<String, Object> result = new HashMap<>();
         result.put("success", true);
         result.put("message", "Thanh toán thành công");
         result.put("order_count", allOrderIds.size());
-        
-        log.info("✅ Payment processed successfully - Orders completed: {}", allOrderIds.size());
+        result.put("total_amount", sessionTotal);
         return result;
     }
 

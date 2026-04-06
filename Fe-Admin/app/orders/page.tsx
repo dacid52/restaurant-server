@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import useSWR, { mutate } from "swr";
 import {
     Search,
     RefreshCw,
@@ -56,6 +57,9 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
+import { kitchenSocket, orderSocket } from "@/lib/socket";
+
+const fetcher = (url: string) => api.get(url).then((res) => res.data);
 
 // Types
 interface OrderDetail {
@@ -64,6 +68,31 @@ interface OrderDetail {
     food_name?: string;
     quantity: number;
     price: number;
+}
+
+interface KitchenItemStatus {
+    order_detail_id: number;
+    status: string;
+    updated_at?: string;
+}
+
+interface OrderSessionSummary {
+    representative_order_id: number;
+    table_id: number;
+    table_key: string;
+    total_orders: number;
+    total_items: number;
+    total_amount: number;
+    status: string;
+    payment_status: string;
+    buffet_active: boolean;
+    buffet_package_name?: string;
+    last_order_time: string;
+}
+
+interface OrderSessionDetail {
+    summary: OrderSessionSummary;
+    orders: Order[];
 }
 
 interface Order {
@@ -79,6 +108,10 @@ interface Order {
     updated_at: string;
     details: OrderDetail[];
 }
+
+const getRequestPaymentPayload = (order: Order) => ({
+    table_key: order.table_key,
+});
 
 // Helper functions
 const formatCurrency = (value: number): string => {
@@ -166,7 +199,8 @@ const ORDER_STATUSES = [
 ];
 
 export default function OrdersManagementPage() {
-    const [orders, setOrders] = useState<Order[]>([]);
+    const [sessions, setSessions] = useState<OrderSessionSummary[]>([]);
+    const [itemStatuses, setItemStatuses] = useState<Record<number, KitchenItemStatus>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
@@ -193,8 +227,27 @@ export default function OrdersManagementPage() {
         try {
             setLoading(true);
             setError(null);
-            const response = await api.get("/orders");
-            setOrders(response.data || []);
+            const [sessionsResponse, kitchenQueueResponse] = await Promise.all([
+                api.get("/orders/sessions"),
+                api.get("/kitchen/queue"),
+            ]);
+
+            const nextSessions = sessionsResponse.data || [];
+            const kitchenQueue = kitchenQueueResponse.data || [];
+
+            const nextItemStatuses = kitchenQueue.reduce((acc: Record<number, KitchenItemStatus>, item: any) => {
+                if (item.order_detail_id) {
+                    acc[item.order_detail_id] = {
+                        order_detail_id: item.order_detail_id,
+                        status: item.status,
+                        updated_at: item.updated_at,
+                    };
+                }
+                return acc;
+            }, {});
+
+            setSessions(nextSessions);
+            setItemStatuses(nextItemStatuses);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Không thể tải dữ liệu đơn hàng";
             setError(errorMessage);
@@ -211,18 +264,100 @@ export default function OrdersManagementPage() {
         return () => clearInterval(interval);
     }, [fetchOrders]);
 
+    useEffect(() => {
+        let mounted = true;
+
+        kitchenSocket.connect(
+            () => {
+                if (!mounted) return;
+
+                kitchenSocket.subscribe("/topic/kitchen.queue-updated", (data) => {
+                    if (!data?.order_detail_id || !data?.status) return;
+
+                    setItemStatuses((prev) => ({
+                        ...prev,
+                        [data.order_detail_id]: {
+                            order_detail_id: data.order_detail_id,
+                            status: data.status,
+                            updated_at: data.updated_at,
+                        },
+                    }));
+                });
+            },
+            (err) => {
+                if (!mounted) return;
+                console.error("Kitchen socket error", err);
+            }
+        );
+
+        return () => {
+            mounted = false;
+            kitchenSocket.disconnect();
+        };
+    }, []);
+
+    const selectedSessionDetailKey = selectedOrder
+        ? `/orders/sessions/detail?tableId=${selectedOrder.table_id}&tableKey=${encodeURIComponent(selectedOrder.table_key || "")}`
+        : null;
+
+    const { data: selectedSessionDetail } = useSWR<OrderSessionDetail>(
+        selectedSessionDetailKey,
+        fetcher
+    );
+
+    useEffect(() => {
+        let mounted = true;
+
+        orderSocket.connect(
+            () => {
+                if (!mounted) return;
+
+                const revalidateOrdersView = async () => {
+                    await fetchOrders();
+                    await mutate("/orders/sessions");
+                    if (selectedSessionDetailKey) {
+                        await mutate(selectedSessionDetailKey);
+                    }
+                };
+
+                orderSocket.subscribe("/topic/order.status.updated", async () => {
+                    if (!mounted) return;
+                    await revalidateOrdersView();
+                });
+
+                orderSocket.subscribe("/topic/payment.completed", async () => {
+                    if (!mounted) return;
+                    await revalidateOrdersView();
+                });
+            },
+            (err) => {
+                if (!mounted) return;
+                console.error("Order socket error", err);
+            }
+        );
+
+        return () => {
+            mounted = false;
+            orderSocket.disconnect();
+        };
+    }, [fetchOrders, selectedSessionDetailKey]);
+
     // Filter orders
-    const filteredOrders = orders.filter((order) => {
+    const filteredSessions = sessions.filter((session) => {
+        const normalizedQuery = searchQuery.trim().toLowerCase();
         const matchesSearch =
-            order.id.toString().includes(searchQuery) ||
-            order.table_id.toString().includes(searchQuery);
-        const matchesStatus = filterStatus === "all" || order.status === filterStatus;
-        const paymentStatus = order.payment_status || "unpaid";
+            normalizedQuery === "" ||
+            session.representative_order_id.toString().includes(normalizedQuery) ||
+            session.table_id.toString().includes(normalizedQuery) ||
+            (session.table_key || "").toLowerCase().includes(normalizedQuery) ||
+            (session.buffet_package_name || "").toLowerCase().includes(normalizedQuery);
+        const matchesStatus = filterStatus === "all" || session.status === filterStatus;
+        const paymentStatus = session.payment_status || "unpaid";
         const matchesPayment = filterPayment === "all" || paymentStatus === filterPayment;
 
         let matchesDate = true;
         if (filterDate) {
-            const orderDateStr = new Date(order.order_time).toLocaleDateString('en-CA');
+            const orderDateStr = new Date(session.last_order_time).toLocaleDateString('en-CA');
             matchesDate = orderDateStr === filterDate;
         }
 
@@ -264,14 +399,23 @@ export default function OrdersManagementPage() {
 
         setActionLoading(true);
         try {
-            await api.post(`/orders/${selectedOrder.id}/confirm`);
-            toast.success("Đã xác nhận và gửi đơn sang bếp");
+            const response = await api.post("/orders/sessions/confirm", {
+                table_id: selectedOrder.table_id,
+                table_key: selectedOrder.table_key,
+            });
+            const confirmedCount = response.data?.confirmed_count || 0;
+            const message = response.data?.message || "Đã xử lý xác nhận phiên bàn";
+            if (confirmedCount > 0) {
+                toast.success(message);
+            } else {
+                toast.info(message);
+            }
             setIsConfirmDialogOpen(false);
             await fetchOrders();
         } catch (err) {
             const errorMsg = err instanceof Error ? err.message : "Lỗi khi xác nhận đơn hàng";
             toast.error(errorMsg);
-            console.error("Error confirming order:", err);
+            console.error("Error confirming session orders:", err);
         } finally {
             setActionLoading(false);
         }
@@ -282,7 +426,10 @@ export default function OrdersManagementPage() {
 
         setActionLoading(true);
         try {
-            await api.post(`/orders/${selectedOrder.id}/request-payment`);
+            await api.post(
+                `/orders/${selectedOrder.id}/request-payment`,
+                getRequestPaymentPayload(selectedOrder)
+            );
             toast.success("Đã gửi yêu cầu thanh toán");
             setIsPaymentDialogOpen(false);
             await fetchOrders();
@@ -300,7 +447,19 @@ export default function OrdersManagementPage() {
 
         setActionLoading(true);
         try {
-            await api.post("/orders/payments/complete", { order_id: selectedOrder.id });
+            const sessionDetailResponse = await api.get(
+                `/orders/sessions/detail?tableId=${selectedOrder.table_id}&tableKey=${encodeURIComponent(selectedOrder.table_key || "")}`
+            );
+            const sessionOrders: Order[] = sessionDetailResponse.data?.orders || [];
+            const sessionOrderIds = sessionOrders
+                .filter((order) => (order.payment_status || "unpaid") !== "paid")
+                .map((order) => order.id);
+
+            await api.post("/orders/complete-payment", {
+                table_id: selectedOrder.table_id,
+                table_key: selectedOrder.table_key,
+                order_ids: sessionOrderIds.length > 0 ? sessionOrderIds : [selectedOrder.id],
+            });
             toast.success("Đã hoàn tất thanh toán và đóng bàn");
             setIsCompletePaymentDialogOpen(false);
             await fetchOrders();
@@ -315,12 +474,14 @@ export default function OrdersManagementPage() {
 
     // Stats
     const stats = {
-        total: orders.length,
-        pending: orders.filter((o) => o.status === "Chờ xác nhận").length,
-        cooking: orders.filter((o) => o.status === "Đang nấu").length,
-        completed: orders.filter((o) => o.status === "Hoàn thành").length,
-        unpaid: orders.filter((o) => (o.payment_status || "unpaid") === "unpaid").length,
+        total: sessions.length,
+        pending: sessions.filter((o) => o.status === "Chờ xác nhận").length,
+        cooking: sessions.filter((o) => o.status === "Đang nấu").length,
+        completed: sessions.filter((o) => o.status === "Hoàn thành").length,
+        unpaid: sessions.filter((o) => (o.payment_status || "unpaid") === "unpaid").length,
     };
+
+    const selectedSessionOrders = selectedSessionDetail?.orders || [];
 
     // Loading state
     if (loading) {
@@ -453,7 +614,7 @@ export default function OrdersManagementPage() {
             )}
 
             {/* Orders Table */}
-            {filteredOrders.length === 0 ? (
+            {filteredSessions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center border rounded-lg">
                     <Package className="h-12 w-12 text-muted-foreground mb-4" />
                     <p className="text-muted-foreground">
@@ -467,7 +628,7 @@ export default function OrdersManagementPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="w-20">ID</TableHead>
+                                <TableHead className="w-20">Session</TableHead>
                                 <TableHead className="w-24">Bàn</TableHead>
                                 <TableHead>Thời gian</TableHead>
                                 <TableHead>Trạng thái</TableHead>
@@ -477,45 +638,59 @@ export default function OrdersManagementPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredOrders.map((order) => (
-                                <TableRow key={order.id}>
-                                    <TableCell className="font-medium">#{order.id}</TableCell>
+                            {filteredSessions.map((session) => {
+                                const sessionRepresentative: Order = {
+                                    id: session.representative_order_id,
+                                    table_id: session.table_id,
+                                    user_id: null,
+                                    table_key: session.table_key,
+                                    order_time: session.last_order_time,
+                                    status: session.status,
+                                    total: session.total_amount,
+                                    is_buffet: session.buffet_active,
+                                    payment_status: session.payment_status,
+                                    updated_at: session.last_order_time,
+                                    details: [],
+                                };
+                                return (
+                                <TableRow key={`${session.table_id}-${session.table_key}`}>
+                                    <TableCell className="font-medium">{session.total_orders} đơn</TableCell>
                                     <TableCell>
-                                        <Badge variant="outline">Bàn {order.table_id}</Badge>
+                                        <Badge variant="outline">Bàn {session.table_id}</Badge>
                                     </TableCell>
                                     <TableCell className="text-sm text-muted-foreground">
-                                        {formatDateTime(order.order_time)}
+                                        {formatDateTime(session.last_order_time)}
                                     </TableCell>
                                     <TableCell>
-                                        <Badge className={`gap-1 ${getStatusColor(order.status)}`}>
-                                            {getStatusIcon(order.status)}
-                                            {order.status}
+                                        <Badge className={`gap-1 ${getStatusColor(session.status)}`}>
+                                            {getStatusIcon(session.status)}
+                                            {session.status}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge className={getPaymentStatusColor(order.payment_status)}>
-                                            {getPaymentStatusText(order.payment_status)}
+                                        <Badge className={getPaymentStatusColor(session.payment_status)}>
+                                            {getPaymentStatusText(session.payment_status)}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right font-semibold">
-                                        {formatCurrency(order.total)}
+                                        {formatCurrency(session.total_amount)}
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex items-center justify-center gap-1">
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                onClick={() => handleViewDetail(order)}
+                                                onClick={() => handleViewDetail(sessionRepresentative)}
                                                 title="Xem chi tiết"
                                             >
                                                 <Eye className="h-4 w-4" />
                                             </Button>
-                                            {order.status === "Chờ xác nhận" && (
+                                            {sessionRepresentative.status === "Chờ xác nhận" && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={() => {
-                                                        setSelectedOrder(order);
+                                                        setSelectedOrder(sessionRepresentative);
                                                         setIsConfirmDialogOpen(true);
                                                     }}
                                                     title="Xác nhận và gửi bếp"
@@ -524,12 +699,12 @@ export default function OrdersManagementPage() {
                                                     <CheckCircle className="h-4 w-4" />
                                                 </Button>
                                             )}
-                                            {order.payment_status === "unpaid" && order.status === "Hoàn thành" && (
+                                            {sessionRepresentative.payment_status === "unpaid" && session.status === "Hoàn thành" && (
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={() => {
-                                                        setSelectedOrder(order);
+                                                        setSelectedOrder(sessionRepresentative);
                                                         setIsCompletePaymentDialogOpen(true);
                                                     }}
                                                     title="Hoàn tất thanh toán"
@@ -541,7 +716,7 @@ export default function OrdersManagementPage() {
                                         </div>
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            )})}
                         </TableBody>
                     </Table>
                 </div>
@@ -551,8 +726,8 @@ export default function OrdersManagementPage() {
             <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>Chi tiết đơn hàng #{selectedOrder?.id}</DialogTitle>
-                        <DialogDescription>Thông tin chi tiết về đơn hàng</DialogDescription>
+                        <DialogTitle>Chi tiết session bàn {selectedOrder?.table_id}</DialogTitle>
+                        <DialogDescription>Thông tin chi tiết các đơn trong cùng session</DialogDescription>
                     </DialogHeader>
                     {selectedOrder && (
                         <div className="space-y-4">
@@ -567,11 +742,11 @@ export default function OrdersManagementPage() {
                                 </div>
                                 <div>
                                     <span className="text-muted-foreground">Thời gian:</span>
-                                    <span className="ml-2 font-medium">{formatDateTime(selectedOrder.order_time)}</span>
+                                    <span className="ml-2 font-medium">{formatDateTime(selectedSessionOrders[0]?.order_time || selectedOrder.order_time)}</span>
                                 </div>
                                 <div>
                                     <span className="text-muted-foreground">Cập nhật:</span>
-                                    <span className="ml-2 font-medium">{formatDateTime(selectedOrder.updated_at)}</span>
+                                    <span className="ml-2 font-medium">{formatDateTime(selectedSessionOrders[selectedSessionOrders.length - 1]?.updated_at || selectedOrder.updated_at)}</span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4">
@@ -582,22 +757,32 @@ export default function OrdersManagementPage() {
                             </div>
                             <Separator />
                             <div>
-                                <h4 className="font-medium mb-2">Món ăn đã đặt</h4>
+                                <h4 className="font-medium mb-2">Món ăn trong session</h4>
                                 <div className="space-y-2">
-                                    {selectedOrder.details.map((item) => (
-                                        <div key={item.id} className="flex justify-between items-center text-sm">
-                                            <span>
-                                                {item.food_name || `Món #${item.food_id}`} x{item.quantity}
-                                            </span>
-                                            <span className="font-medium">{formatCurrency(item.price * item.quantity)}</span>
-                                        </div>
-                                    ))}
+                                    {selectedSessionOrders.flatMap((order) =>
+                                        order.details.map((item) => (
+                                            <div key={`${order.id}-${item.id}`} className="flex justify-between items-center text-sm gap-4">
+                                                <div className="min-w-0">
+                                                    <div>
+                                                        {item.food_name || `Món #${item.food_id}`} x{item.quantity}
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        Đơn #{order.id}
+                                                        {itemStatuses[item.id]?.status ? ` · ${itemStatuses[item.id].status}` : ""}
+                                                    </div>
+                                                </div>
+                                                <span className="font-medium whitespace-nowrap">{formatCurrency(item.price * item.quantity)}</span>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             </div>
                             <Separator />
                             <div className="flex justify-between items-center font-bold text-lg">
                                 <span>Tổng cộng</span>
-                                <span className="text-primary">{formatCurrency(selectedOrder.total)}</span>
+                                <span className="text-primary">
+                                    {formatCurrency(selectedSessionDetail?.summary.total_amount || 0)}
+                                </span>
                             </div>
                         </div>
                     )}
@@ -658,7 +843,7 @@ export default function OrdersManagementPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Xác nhận đơn hàng</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Bạn có chắc muốn xác nhận và gửi đơn hàng #{selectedOrder?.id} sang bếp?
+                            Bạn có chắc muốn gửi các món còn chờ xác nhận của bàn {selectedOrder?.table_id} sang bếp?
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

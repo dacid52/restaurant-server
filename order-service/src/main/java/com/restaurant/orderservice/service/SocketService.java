@@ -19,6 +19,13 @@ public class SocketService {
 
     private final SimpMessagingTemplate messagingTemplate;
 
+    private void emitTableEvent(Integer tableId, @NonNull String eventName, @NonNull Map<String, Object> data) {
+        if (tableId != null) {
+            messagingTemplate.convertAndSend("/topic/table." + tableId,
+                    Map.of("event", eventName, "data", data));
+        }
+    }
+
     /**
      * Broadcast order created event.
      * Frontend subscribes to /topic/order.created
@@ -28,10 +35,17 @@ public class SocketService {
     public void emitOrderCreated(Integer tableId, @NonNull Map<String, Object> data) {
         log.info("🛒 WebSocket emit order_created: tableId={}", tableId);
         messagingTemplate.convertAndSend("/topic/order.created", data);
-        if (tableId != null) {
-            messagingTemplate.convertAndSend("/topic/table." + tableId, 
-                Map.of("event", "order_created", "data", data));
-        }
+        emitTableEvent(tableId, "order_created", data);
+    }
+
+    public void emitBuffetOrderCreated(Integer tableId, @NonNull Map<String, Object> data) {
+        log.info("🍽️ WebSocket emit buffet_order_created: tableId={}", tableId);
+        emitTableEvent(tableId, "buffet_order_created", data);
+    }
+
+    public void emitBuffetFoodAdded(Integer tableId, @NonNull Map<String, Object> data) {
+        log.info("🥗 WebSocket emit buffet_food_added: tableId={}", tableId);
+        emitTableEvent(tableId, "buffet_food_added", data);
     }
 
     /**
@@ -43,10 +57,7 @@ public class SocketService {
     public void emitOrderStatusUpdated(Integer tableId, @NonNull Map<String, Object> data) {
         log.info("📋 WebSocket emit order_status_updated: tableId={}, status={}", tableId, data.get("status"));
         messagingTemplate.convertAndSend("/topic/order.status.updated", data);
-        if (tableId != null) {
-            messagingTemplate.convertAndSend("/topic/table." + tableId,
-                Map.of("event", "order_status_updated", "data", data));
-        }
+        emitTableEvent(tableId, "order_status_updated", data);
     }
 
     /**
@@ -57,9 +68,6 @@ public class SocketService {
     public void emitPaymentCompleted(Integer tableId, @NonNull Map<String, Object> data) {
         log.info("💰 WebSocket emit payment_completed: tableId={}", tableId);
         messagingTemplate.convertAndSend("/topic/payment.completed", data);
-        if (tableId != null) {
-            messagingTemplate.convertAndSend("/topic/table." + tableId,
-                Map.of("event", "payment_completed", "data", data));
-        }
+        emitTableEvent(tableId, "payment_completed", data);
     }
 }

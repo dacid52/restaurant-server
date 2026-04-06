@@ -17,4 +17,7 @@ public interface TableKeyRepository extends JpaRepository<TableKey, Integer> {
     @Modifying
     @Query("UPDATE TableKey k SET k.isValid = false WHERE k.tableId = :tableId AND k.isValid = true")
     void invalidateKeysByTableId(@Param("tableId") Integer tableId);
+
+    @Query("SELECT k FROM TableKey k WHERE k.tableId = :tableId AND k.isValid = true AND k.expiresAt > CURRENT_TIMESTAMP ORDER BY k.createdAt DESC")
+    java.util.Optional<TableKey> findActiveKey(@Param("tableId") Integer tableId);
 }

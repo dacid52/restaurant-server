@@ -7,7 +7,7 @@ spring:
   application:
     name: menu-service
   datasource:
-    url: jdbc:mysql://localhost:3306/MenuDB?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8
+    url: jdbc:mysql://localhost:3306/menudb?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8
     username: root
     password: ""
     driver-class-name: com.mysql.cj.jdbc.Driver

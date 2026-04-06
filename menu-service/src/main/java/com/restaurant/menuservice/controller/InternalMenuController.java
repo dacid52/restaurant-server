@@ -30,4 +30,14 @@ public class InternalMenuController {
         }
         return prices;
     }
+
+    @GetMapping("/names")
+    public Map<Integer, String> getFoodNames(@RequestParam @NonNull List<Integer> foodIds) {
+        List<Food> foods = foodRepository.findAllById(foodIds);
+        Map<Integer, String> names = new HashMap<>();
+        for (Food food : foods) {
+            names.put(food.getId(), food.getName());
+        }
+        return names;
+    }
 }

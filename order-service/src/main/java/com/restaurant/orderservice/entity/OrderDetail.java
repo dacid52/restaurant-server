@@ -30,4 +30,7 @@ public class OrderDetail {
 
     @Column(precision = 10, scale = 2, nullable = false)
     private BigDecimal price;
+
+    @Transient
+    private String foodName;
 }

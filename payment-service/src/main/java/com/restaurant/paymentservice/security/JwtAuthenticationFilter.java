@@ -5,11 +5,11 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import org.springframework.stereotype.Component;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -36,8 +36,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-
-        // Payment request triggered by user/client from Order Service
         if (path.contains("/request")) {
             filterChain.doFilter(request, response);
             return;
@@ -57,10 +55,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             request.setAttribute("userId", claims.get("id"));
             request.setAttribute("username", claims.get("username"));
             request.setAttribute("roleId", claims.get("role_id"));
-            
+
             Integer roleId = (Integer) claims.get("role_id");
-            // Admin (1), Manager (2) and Cashier (usually 5) are allowed
-            if (roleId != 1 && roleId != 2 && roleId != 5) {
+            if (roleId != 1 && roleId != 2 && roleId != 3) {
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 return;
             }

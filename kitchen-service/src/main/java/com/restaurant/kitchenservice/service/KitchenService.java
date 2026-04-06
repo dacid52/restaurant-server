@@ -75,6 +75,21 @@ public class KitchenService {
         queuePayload.put("updated_at", item.getUpdatedAt());
         socketService.emitQueueStatusUpdated(queuePayload);
 
+        Map<String, Object> itemContext = kitchenQueueRepository.findQueueItemContextById(id);
+        if (itemContext != null) {
+            Number tableIdNumber = (Number) itemContext.get("table_id");
+            Map<String, Object> itemPayload = new HashMap<>();
+            itemPayload.put("id", itemContext.get("id"));
+            itemPayload.put("table_id", itemContext.get("table_id"));
+            itemPayload.put("order_id", itemContext.get("order_id"));
+            itemPayload.put("order_detail_id", itemContext.get("order_detail_id"));
+            itemPayload.put("food_name", itemContext.get("food_name"));
+            itemPayload.put("quantity", itemContext.get("quantity"));
+            itemPayload.put("status", itemContext.get("status"));
+            itemPayload.put("updated_at", itemContext.get("updated_at"));
+            socketService.emitTableItemStatus(tableIdNumber != null ? tableIdNumber.intValue() : null, itemPayload);
+        }
+
         // 🔔 If completed, emit delivered event — mirrors: io.emit('queue_item_delivered', ...)
         if ("Hoàn thành".equals(status)) {
             socketService.emitQueueItemDelivered(queuePayload);
@@ -114,7 +129,8 @@ public class KitchenService {
                     Map<String, Object> orderPayload = new HashMap<>();
                     orderPayload.put("order_id", orderId);
                     orderPayload.put("status", newOrderStatus);
-                    socketService.emitOrderStatusUpdated(null, orderPayload);
+                    Number tableIdNumber = itemContext != null ? (Number) itemContext.get("table_id") : null;
+                    socketService.emitOrderStatusUpdated(tableIdNumber != null ? tableIdNumber.intValue() : null, orderPayload);
                 }
             }
         } catch (Exception e) {

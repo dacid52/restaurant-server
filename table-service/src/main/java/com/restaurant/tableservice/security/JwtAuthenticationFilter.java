@@ -30,8 +30,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String path = request.getRequestURI();
-        
-        // Allowed paths
+        String method = request.getMethod();
+
+        // Allowed paths — không cần token
         if (path.contains("validate-key") || path.contains("qr/static") || path.contains("qr/dynamic")) {
             filterChain.doFilter(request, response);
             return;
@@ -39,8 +40,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        // Allow some GET without auth if needed for tables
-        if (request.getMethod().equals("GET") && (authHeader == null || !authHeader.startsWith("Bearer "))) {
+        // /reservations/my — bắt buộc có token (customer xem lịch sử đặt bàn)
+        if (path.endsWith("/reservations/my")) {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
+            }
+            // token validated below — skip the anonymous GET shortcut
+        } else if (method.equals("GET") && (authHeader == null || !authHeader.startsWith("Bearer "))) {
+            // GET requests không cần token (xem danh sách bàn, check availability)
             filterChain.doFilter(request, response);
             return;
         }
@@ -57,11 +65,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             request.setAttribute("userId", claims.get("id"));
             request.setAttribute("username", claims.get("username"));
             request.setAttribute("roleId", claims.get("role_id"));
-            
-            Integer roleId = (Integer) claims.get("role_id");
-            if (roleId != 1 && roleId != 2) {
-                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                 return;
+
+            Integer roleId = ((Number) claims.get("role_id")).intValue();
+
+            // Quyền theo role:
+            // role 1-4 (ADMIN/MANAGER/CASHIER/WAITER): full access
+            // role 5 (CUSTOMER): chỉ được POST /tables/{id}/reservations và GET /reservations/my
+            boolean isCustomer = (roleId == 5);
+
+            if (isCustomer) {
+                boolean allowedForCustomer = (method.equals("POST") && path.matches(".*/tables/\\d+/reservations"))
+                        || path.endsWith("/reservations/my");
+                if (!allowedForCustomer) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    return;
+                }
             }
 
         } catch (Exception e) {

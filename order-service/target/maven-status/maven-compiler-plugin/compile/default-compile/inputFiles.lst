@@ -1,8 +1,11 @@
 C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\config\FeignClientInterceptor.java
+C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\dto\OrderSessionDetailDto.java
+C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\dto\OrderSessionSummaryDto.java
 C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\config\WebSocketConfig.java
 C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\security\JwtAuthenticationFilter.java
 C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\controller\OrderController.java
 C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\config\WebConfig.java
+C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\dto\OrderResponseDto.java
 C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\client\KitchenClient.java
 C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\entity\Order.java
 C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\client\PaymentClient.java
@@ -15,5 +18,6 @@ C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\ent
 C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\security\JwtUtil.java
 C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\exception\GlobalExceptionHandler.java
 C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\repository\OrderRepository.java
+C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\dto\OrderDetailResponseDto.java
 C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\client\MenuClient.java
 C:\restaurant-server\order-service\src\main\java\com\restaurant\orderservice\dto\OrderItemDto.java

@@ -55,6 +55,13 @@ public class SocketService {
         messagingTemplate.convertAndSend("/topic/kitchen.item-delivered", data);
     }
 
+    public void emitTableItemStatus(Integer tableId, @NonNull Map<String, Object> data) {
+        log.info("🍽️ WebSocket emit table item status: tableId={}, orderDetailId={}", tableId, data.get("order_detail_id"));
+        if (tableId != null) {
+            messagingTemplate.convertAndSend("/topic/order.item-status." + tableId, data);
+        }
+    }
+
     /**
      * Equivalent to: io.emit('order_status_updated', data)
      * Also emitted per-table: /topic/order.status.{tableId}

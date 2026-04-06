@@ -17,6 +17,7 @@ const state = {
   modalFood: null,
   modalQuantity: 1,
   socket: null,
+  itemStatuses: {},
 };
 
 const recentToasts = new Map();
@@ -54,6 +55,16 @@ function getUrlParams() {
     tableId: params.get('tableId') || params.get('table_id'),
     tableKey: params.get('tableKey') || params.get('key'),
   };
+}
+
+function getDeviceSession() {
+  const storageKey = 'aurora_device_session';
+  let sessionId = window.localStorage.getItem(storageKey);
+  if (!sessionId) {
+    sessionId = `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+    window.localStorage.setItem(storageKey, sessionId);
+  }
+  return sessionId;
 }
 
 async function fetchJson(url, options = {}) {
@@ -141,9 +152,34 @@ function getPaymentStatusClass(status) {
   }
 }
 
+function getCurrentSessionPaymentStatus() {
+  const unpaidOrders = state.orders.filter((order) => order.payment_status !== 'paid');
+  if (unpaidOrders.some((order) => ['waiting', 'pending'].includes(order.payment_status))) {
+    return 'waiting';
+  }
+  if (unpaidOrders.length > 0) {
+    return 'unpaid';
+  }
+  if (state.orders.length > 0) {
+    return 'paid';
+  }
+  return 'unpaid';
+}
+
+function getRequestPaymentOrderId() {
+  const unpaidOrder = state.orders.find((order) => order.payment_status !== 'paid');
+  return unpaidOrder?.id || null;
+}
+
+function normalizeOrderStatus(status) {
+  if (status === 'Đã thanh toán') return 'Hoàn thành';
+  if (status === 'Đang nấu') return 'Đang chế biến';
+  return status;
+}
+
 function getOrderStatusClass(status) {
-  switch (status) {
-    case 'Đã thanh toán':
+  const normalizedStatus = normalizeOrderStatus(status);
+  switch (normalizedStatus) {
     case 'Hoàn thành':
       return 'served';
     case 'Đang chế biến':
@@ -159,6 +195,19 @@ function getOrderStatusClass(status) {
   }
 }
 
+function getItemStatusText(status) {
+  switch (status) {
+    case 'Đang chế biến':
+      return 'Đang nấu';
+    case 'Hoàn thành':
+      return 'Đã xong';
+    case 'Chờ chế biến':
+      return 'Chờ bếp';
+    default:
+      return status || '';
+  }
+}
+
 function updateHeader() {
   document.getElementById('table-name').textContent = state.table?.name || '--';
   const statusText = document.querySelector('#session-status .status-text');
@@ -168,7 +217,7 @@ function updateHeader() {
   if (state.isBuffetActive && state.selectedBuffetPackage?.name) {
     statusText.textContent = 'Buffet đang hoạt động';
   } else if (state.summary?.total_orders > 0) {
-    statusText.textContent = getPaymentStatusText(state.orders[0]?.payment_status || 'unpaid');
+    statusText.textContent = getPaymentStatusText(getCurrentSessionPaymentStatus());
   } else {
     statusText.textContent = state.table?.status || 'Sẵn sàng';
   }
@@ -403,7 +452,7 @@ function renderOrders() {
   const totalOrders = state.summary?.total_orders || 0;
   const totalItems = state.summary?.total_items || 0;
   const totalAmount = state.summary?.total_amount || 0;
-  const paymentStatus = state.orders[0]?.payment_status || 'unpaid';
+  const paymentStatus = getCurrentSessionPaymentStatus();
 
   document.getElementById('total-orders-count').textContent = totalOrders;
   document.getElementById('total-items-count').textContent = totalItems;
@@ -426,21 +475,26 @@ function renderOrders() {
   emptyEl.classList.add('hidden');
   contentEl.classList.remove('hidden');
 
-  listEl.innerHTML = state.orders.map((order) => `
+  listEl.innerHTML = state.orders.map((order) => {
+    const displayStatus = normalizeOrderStatus(order.status);
+    return `
     <div class="order-card">
       <div class="order-card-header">
         <div class="order-card-info">
           <span class="order-id">Đơn #${order.id}</span>
           <span class="order-time">${formatDateTime(order.order_time)}</span>
         </div>
-        <span class="order-status ${getOrderStatusClass(order.status)}">${order.status || 'Đang xử lý'}</span>
+        <span class="order-status ${getOrderStatusClass(displayStatus)}">${displayStatus || 'Đang xử lý'}</span>
       </div>
       <div class="order-items-list">
         ${(order.details || []).map((item) => `
           <div class="order-item-row">
             <div class="order-item-left">
               <span class="order-item-qty">${item.quantity}x</span>
-              <span class="order-item-name">${item.food_name || 'N/A'}</span>
+              <div class="order-item-meta">
+                <span class="order-item-name">${item.food_name || 'N/A'}</span>
+                ${state.itemStatuses[item.id]?.status ? `<span class="order-item-status ${state.itemStatuses[item.id].status === 'Hoàn thành' ? 'delivered' : ''}">${getItemStatusText(state.itemStatuses[item.id].status)}</span>` : ''}
+              </div>
             </div>
             <span class="order-item-price">${formatCurrency((item.price || 0) * (item.quantity || 0))}</span>
           </div>
@@ -451,7 +505,8 @@ function renderOrders() {
         <span class="order-total-amount">${formatCurrency(order.total)}</span>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function switchTab(tab) {
@@ -595,8 +650,6 @@ async function addToCartFromModal() {
 
   if (state.isBuffetActive) {
     try {
-      // ✅ FIX: Use buffet package price instead of 0
-      const buffetPrice = state.selectedBuffetPackage?.price || 0;
       await fetchJson('/api/orders', {
         method: 'POST',
         body: JSON.stringify({
@@ -604,7 +657,9 @@ async function addToCartFromModal() {
           table_key: state.tableKey,
           items: [{ food_id: state.modalFood.id, quantity: state.modalQuantity }],
           is_buffet: true,
-          buffet_price: buffetPrice,  // ✅ Use actual package price
+          buffet_session_id: state.selectedBuffetPackage?.buffet_session_id || null,
+          buffet_package_id: state.selectedBuffetPackage?.id || null,
+          buffet_package_name: state.selectedBuffetPackage?.name || null,
         }),
       });
       showToast(`Đã gọi ${state.modalFood.name}`);
@@ -671,7 +726,8 @@ async function confirmBuffetOrder() {
       body: JSON.stringify({
         table_id: state.tableId,
         table_key: state.tableKey,
-        free_drink_id: null,
+        is_buffet: true,
+        items: [],
         buffet_price: state.selectedBuffetPackage.price,
         buffet_package_id: state.selectedBuffetPackage.id,
         buffet_package_name: state.selectedBuffetPackage.name,
@@ -702,13 +758,14 @@ function closePaymentModal() {
 }
 
 async function submitPaymentRequest() {
-  if (state.orders.length === 0) {
+  const requestOrderId = getRequestPaymentOrderId();
+  if (!requestOrderId) {
     showToast('Chưa có đơn hàng để thanh toán', 'error');
     return;
   }
 
   try {
-    await fetchJson(`/api/orders/${state.orders[0].id}/request-payment`, {
+    await fetchJson(`/api/orders/${requestOrderId}/request-payment`, {
       method: 'POST',
       body: JSON.stringify({ table_key: state.tableKey }),
     });
@@ -762,23 +819,18 @@ async function loadBuffetPackages() {
 }
 
 async function refreshOrders() {
-  const orders = await fetchJson(`/api/orders/table/${state.tableId}?tableKey=${encodeURIComponent(state.tableKey || '')}&t=${Date.now()}`);
+  const [orders, summary] = await Promise.all([
+    fetchJson(`/api/orders/table/${state.tableId}?tableKey=${encodeURIComponent(state.tableKey || '')}&t=${Date.now()}`),
+    fetchJson(`/api/orders/table/${state.tableId}/session-summary?tableKey=${encodeURIComponent(state.tableKey || '')}&t=${Date.now()}`),
+  ]);
+
   state.orders = orders || [];
-  const unpaidOrders = state.orders.filter(o => o.payment_status !== 'paid');
-  const total = unpaidOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-  state.summary = unpaidOrders.length > 0 ? { 
-    total: total, 
-    total_amount: total,  // ✅ FIX: Add total_amount for compatibility
-    total_orders: unpaidOrders.length,  // ✅ Add for order count
-    total_items: unpaidOrders.reduce((sum, o) => sum + (o.details?.length || 0), 0),  // ✅ Add for item count
-    status: unpaidOrders[0].status, 
-    payment_status: unpaidOrders[0].payment_status 
-  } : null;
+  state.summary = summary && summary.total_orders > 0 ? summary : null;
 
   const buffetOrder = state.orders.find(
     (order) => order.is_buffet && order.payment_status !== 'paid' && order.status !== 'Chờ xác nhận'
   );
-  state.isBuffetActive = !!buffetOrder;
+  state.isBuffetActive = Boolean(summary?.buffet_active || buffetOrder);
 
   const pendingBuffetOrder = state.orders.find(
     (order) => order.is_buffet && order.payment_status !== 'paid'
@@ -789,6 +841,16 @@ async function refreshOrders() {
       id: buffetPackageSource.buffet_package_id,
       name: buffetPackageSource.buffet_package_name,
       price: buffetPackageSource.total,
+      buffet_session_id: buffetPackageSource.buffet_session_id,
+    };
+  }
+  if (buffetPackageSource && state.selectedBuffetPackage) {
+    state.selectedBuffetPackage = {
+      ...state.selectedBuffetPackage,
+      id: buffetPackageSource.buffet_package_id || state.selectedBuffetPackage.id,
+      name: buffetPackageSource.buffet_package_name || state.selectedBuffetPackage.name,
+      price: buffetPackageSource.total || state.selectedBuffetPackage.price,
+      buffet_session_id: buffetPackageSource.buffet_session_id || state.selectedBuffetPackage.buffet_session_id,
     };
   }
   if (state.isBuffetActive) {
@@ -825,6 +887,12 @@ function initializeSocket() {
           await refreshOrders();
         } else if (event === 'order_status_updated') {
           if (!shouldProcessSocketEvent('order_status_updated', [data.order_id, data.status, data.payment_status])) return;
+          const normalizedStatus = normalizeOrderStatus(data.status);
+          if (normalizedStatus === 'Hoàn thành') {
+            showToast('Món ăn đã được phục vụ', 'success');
+          } else if (data.payment_status === 'waiting') {
+            showToast('Thu ngân đã nhận yêu cầu thanh toán', 'info');
+          }
           await refreshOrders();
         } else if (event === 'payment_completed') {
           if (!shouldProcessSocketEvent('payment_completed', [data.request_id, data.order_id, data.table_id, data.amount])) return;
@@ -841,35 +909,34 @@ function initializeSocket() {
   const kitchenStomp = Stomp.over(kitchenSocket);
   kitchenStomp.debug = null;
   kitchenStomp.connect({}, () => {
-    kitchenStomp.subscribe(`/topic/order.status.${state.tableId}`, async (message) => {
-       try {
-         const data = JSON.parse(message.body);
-         if (!shouldProcessSocketEvent('order_item_delivered', [data.order_id, data.status])) return;
-         showToast('Món ăn đã được phục vụ', 'success');
-         await refreshOrders();
-       } catch (e) {
-         console.error('Lỗi khi parse message kitchen:', e);
-       }
+    kitchenStomp.subscribe(`/topic/order.item-status.${state.tableId}`, async (message) => {
+      try {
+        const data = JSON.parse(message.body);
+        if (!data?.order_detail_id) return;
+
+        state.itemStatuses[data.order_detail_id] = {
+          status: data.status,
+          food_name: data.food_name,
+          updated_at: data.updated_at,
+        };
+
+        if (!shouldProcessSocketEvent('order_item_status', [data.order_detail_id, data.status, data.updated_at])) return;
+
+        if (data.status === 'Đang chế biến') {
+          showToast(`${data.food_name || 'Món ăn'} đang được bếp chuẩn bị`, 'info');
+        } else if (data.status === 'Hoàn thành') {
+          showToast(`${data.food_name || 'Món ăn'} đã sẵn sàng phục vụ`, 'success');
+        }
+
+        if (state.currentTab === 'orders') {
+          renderOrders();
+        }
+      } catch (e) {
+        console.error('Lỗi khi parse message kitchen item status:', e);
+      }
     });
   });
-  
-  const paymentSocket = new SockJS(`${gatewayUrl}/ws/payment`);
-  const paymentStomp = Stomp.over(paymentSocket);
-  paymentStomp.debug = null;
-  paymentStomp.connect({}, () => {
-    paymentStomp.subscribe(`/topic/payment.completed`, async (message) => {
-       try {
-         const data = JSON.parse(message.body);
-         if (data.table_id && String(data.table_id) === String(state.tableId)) {
-           if (!shouldProcessSocketEvent('payment_completed', [data.request_id, data.order_id, data.table_id, data.amount])) return;
-           showToast('Thanh toán hoàn tất. Cảm ơn quý khách!', 'success');
-           await refreshOrders();
-         }
-       } catch (e) {
-         console.error('Lỗi message payment:', e);
-       }
-    });
-  });
+
 }
 async function initApp() {
   const params = getUrlParams();
@@ -887,7 +954,9 @@ async function initApp() {
 
   try {
     // Validate key first and update table status to "Đang sử dụng"
-    const isValid = await fetchJson(`/api/tables/${state.tableId}/validate-key?tableKey=${encodeURIComponent(state.tableKey)}`);
+    const isValid = await fetchJson(
+      `/api/tables/${state.tableId}/validate-key?tableKey=${encodeURIComponent(state.tableKey)}&deviceSession=${encodeURIComponent(getDeviceSession())}`
+    );
     if (!isValid) {
       const loadingContent = document.querySelector('.loading-content');
       if (loadingContent) {

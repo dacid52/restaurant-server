@@ -1,6 +1,7 @@
 com\restaurant\tableservice\security\JwtUtil.class
 com\restaurant\tableservice\config\WebConfig.class
 com\restaurant\tableservice\service\TableService.class
+com\restaurant\tableservice\entity\TableReservation.class
 com\restaurant\tableservice\controller\TableController.class
 com\restaurant\tableservice\entity\RestaurantLayout.class
 com\restaurant\tableservice\security\JwtAuthenticationFilter.class
@@ -14,3 +15,4 @@ com\restaurant\tableservice\repository\RestaurantLayoutRepository.class
 com\restaurant\tableservice\repository\TableRepository.class
 com\restaurant\tableservice\util\QrCodeUtil.class
 com\restaurant\tableservice\repository\TableKeyRepository.class
+com\restaurant\tableservice\repository\TableReservationRepository.class

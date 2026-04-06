@@ -18,7 +18,7 @@ public class WebConfig {
     public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilter() {
         FilterRegistrationBean<JwtAuthenticationFilter> registrationBean = new FilterRegistrationBean<>();
         registrationBean.setFilter(jwtAuthenticationFilter);
-        registrationBean.addUrlPatterns("/api/me", "/api/users/*");
+        registrationBean.addUrlPatterns("/api/users/*", "/api/users/me");
         return registrationBean;
     }
 }

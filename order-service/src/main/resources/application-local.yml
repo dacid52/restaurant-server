@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/orderdb?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: ""
+
+services:
+  table: http://localhost:3011
+  menu: http://localhost:3002
+  kitchen: http://localhost:3004
+  payment: http://localhost:3008

@@ -117,6 +117,7 @@ public class UserService {
         dto.setAge(user.getAge());
         dto.setEmail(user.getEmail());
         dto.setAddress(user.getAddress());
+        dto.setEmailVerified(user.isEmailVerified());
         dto.setCreatedAt(user.getCreatedAt());
         dto.setUpdatedAt(user.getUpdatedAt());
         return dto;

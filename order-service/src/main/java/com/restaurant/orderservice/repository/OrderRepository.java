@@ -6,5 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface OrderRepository extends JpaRepository<Order, Integer> {
-    List<Order> findByTableIdAndTableKeyAndPaymentStatusNot(Integer tableId, String tableKey, String paymentStatus);
+    List<Order> findByTableIdAndTableKeyAndPaymentStatusNotOrderByOrderTimeAsc(Integer tableId, String tableKey, String paymentStatus);
+    Order findFirstByTableIdAndTableKeyAndIsBuffetTrueAndPaymentStatusNotAndBuffetSessionIdIsNotNullOrderByOrderTimeDesc(
+            Integer tableId, String tableKey, String paymentStatus);
 }

@@ -76,7 +76,7 @@ interface KPIData {
   totalRevenue: number;
   todayOrders: number;
   occupiedTables: number;
-  reservedTables: number;
+  availableTables: number;
 }
 
 interface RevenueData {
@@ -125,10 +125,10 @@ const calculateKPIs = (
 ): KPIData => {
   const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
   const todayOrders = orders.filter((o) => isToday(o.order_time)).length;
-  const occupiedTables = tables.filter((t) => t.status === "occupied").length;
-  const reservedTables = tables.filter((t) => t.status === "reserved").length;
+  const occupiedTables = tables.filter((t) => t.status === "Đang sử dụng").length;
+  const availableTables = tables.filter((t) => t.status === "Trống").length;
 
-  return { totalRevenue, todayOrders, occupiedTables, reservedTables };
+  return { totalRevenue, todayOrders, occupiedTables, availableTables };
 };
 
 const calculateRevenueByDay = (payments: Payment[]): RevenueData[] => {
@@ -264,7 +264,7 @@ export default function AdminDashboard() {
     totalRevenue: 0,
     todayOrders: 0,
     occupiedTables: 0,
-    reservedTables: 0,
+    availableTables: 0,
   });
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [topFoods, setTopFoods] = useState<TopFoodData[]>([]);
@@ -294,7 +294,7 @@ export default function AdminDashboard() {
 
       const enrichedOrders = orders.map(o => ({
         ...o,
-        tableName: tables.find(t => t.id === o.table_id)?.name || `Mã ${o.table_key.substring(0, 8)}`
+        tableName: tables.find(t => t.id === o.table_id)?.name || (o.table_key ? `Mã ${o.table_key.substring(0, 8)}` : `Bàn ${o.table_id}`)
       }));
 
       setKpis(calculateKPIs(enrichedOrders, tables, payments));
@@ -370,12 +370,12 @@ export default function AdminDashboard() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Bàn đã đặt</CardTitle>
+            <CardTitle className="text-sm font-medium">Bàn trống</CardTitle>
             <CalendarCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{kpis.reservedTables}</div>
-            <p className="text-xs text-muted-foreground">Đã đặt trước</p>
+            <div className="text-2xl font-bold">{kpis.availableTables}</div>
+            <p className="text-xs text-muted-foreground">Sẵn sàng phục vụ</p>
           </CardContent>
         </Card>
       </div>

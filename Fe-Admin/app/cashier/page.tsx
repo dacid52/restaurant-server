@@ -82,12 +82,27 @@ interface Order {
     items?: OrderItem[];
 }
 
+interface OrderSessionSummary {
+    table_id: number;
+    table_key: string;
+    total_amount: number;
+    order_count: number;
+    status: string;
+    payment_status: string;
+    last_order_time: string;
+}
+
+interface OrderSessionDetail {
+    summary: OrderSessionSummary;
+    orders: Order[];
+}
+
 interface PaymentHistory {
     id: number;
     order_id: number;
     amount: number;
     method: string;
-    payment_time: string;
+    paid_at: string;
     status: string;
 }
 
@@ -129,12 +144,16 @@ export default function CashierPage() {
                         description: `Tổng tiền: ${formatCurrency(data.amount)}`
                     });
                     mutate("/payments/waiting");
+                    mutate("/orders/sessions");
                 });
 
                 // Lắng nghe sự kiện thanh toán hoàn tất (nếu có cashier khác thao tác)
                 paymentSocket.subscribe('/topic/payment.completed', (data) => {
                     mutate("/payments/waiting");
-                    mutate("/orders");
+                    mutate("/orders/sessions");
+                    if (data?.table_id && data?.table_key) {
+                        mutate(`/orders/sessions/detail?tableId=${data.table_id}&tableKey=${encodeURIComponent(data.table_key)}`);
+                    }
                     mutate("/payments/history");
                 });
             },
@@ -158,11 +177,19 @@ export default function CashierPage() {
         { refreshInterval: 10000 } // Tăng interval lên 10s vì đã có socket LIVE
     );
 
-    // Fetch all orders for unpaid tracking
-    const { data: allOrders, isLoading: isLoadingOrders } = useSWR<Order[]>(
-        "/orders",
+    const { data: allSessions, isLoading: isLoadingOrders } = useSWR<OrderSessionSummary[]>(
+        "/orders/sessions",
         fetcher,
         { refreshInterval: 15000 }
+    );
+
+    const selectedSessionDetailKey = selectedPayment
+        ? `/orders/sessions/detail?tableId=${selectedPayment.table_id}&tableKey=${encodeURIComponent(selectedPayment.table_key || "")}`
+        : null;
+
+    const { data: selectedSessionDetail } = useSWR<OrderSessionDetail>(
+        selectedSessionDetailKey,
+        fetcher
     );
 
     // Fetch payment history
@@ -171,16 +198,24 @@ export default function CashierPage() {
         fetcher
     );
 
-    // Filter unpaid orders (khách đang ăn nhưng chưa thanh toán)
-    const unpaidOrders = allOrders?.filter(
-        (order: Order) => order.payment_status === "unpaid" && order.status !== "cancelled"
+    const unpaidSessions = allSessions?.filter(
+        (session: OrderSessionSummary) => session.payment_status === "unpaid"
     ) || [];
 
     // Calculate stats
     const totalWaiting = waitingPayments?.length || 0;
     const totalWaitingAmount = waitingPayments?.reduce((sum: number, p: WaitingPayment) => sum + p.total, 0) || 0;
-    const totalUnpaid = unpaidOrders.length;
-    const totalUnpaidAmount = unpaidOrders.reduce((sum: number, o: Order) => sum + o.total, 0);
+    const totalUnpaid = unpaidSessions.length;
+    const totalUnpaidAmount = unpaidSessions.reduce((sum: number, s: OrderSessionSummary) => sum + s.total_amount, 0);
+
+    const selectedSessionOrders = selectedSessionDetail?.orders || [];
+
+    const selectedSessionItems = selectedSessionOrders.flatMap((order: Order) =>
+        (order.items || []).map((item: OrderItem) => ({
+            ...item,
+            order_id: order.id,
+        }))
+    );
 
     // Handle view detail
     const handleViewDetail = (payment: WaitingPayment) => {
@@ -276,6 +311,9 @@ export default function CashierPage() {
 
             setPaymentDialogOpen(false);
             setSelectedPayment(null);
+            mutate("/payments/waiting");
+            mutate("/orders/sessions");
+            mutate("/payments/history");
         } catch (error: any) {
             console.error("❌ Payment error:", error);
             
@@ -484,7 +522,7 @@ export default function CashierPage() {
                                         <Skeleton key={i} className="h-16 w-full" />
                                     ))}
                                 </div>
-                            ) : unpaidOrders.length === 0 ? (
+                            ) : unpaidSessions.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
                                     <CheckCircle className="size-12 text-green-500/50 mb-4" />
                                     <h3 className="text-lg font-medium text-foreground">Không có bàn nào đang ăn</h3>
@@ -501,31 +539,31 @@ export default function CashierPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {unpaidOrders.map((order: Order) => (
-                                            <TableRow key={order.id}>
+                                        {unpaidSessions.map((session: OrderSessionSummary) => (
+                                            <TableRow key={`${session.table_id}-${session.table_key}`}>
                                                 <TableCell>
-                                                    <span className="font-mono font-medium">#{order.id}</span>
+                                                    <span className="font-mono font-medium">{session.order_count} đơn</span>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant="outline">Bàn {order.table_id}</Badge>
+                                                    <Badge variant="outline">Bàn {session.table_id}</Badge>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge
                                                         variant={
-                                                            order.status === "Hoàn thành" || order.status === "completed"
+                                                            session.status === "Hoàn thành" || session.status === "completed"
                                                                 ? "default"
-                                                                : order.status === "Đang nấu" || order.status === "cooking"
+                                                                : session.status === "Đang nấu" || session.status === "cooking"
                                                                     ? "secondary"
                                                                     : "outline"
                                                         }
                                                     >
-                                                        {order.status}
+                                                        {session.status}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <span className="font-medium text-muted-foreground">{formatCurrency(order.total)}</span>
+                                                    <span className="font-medium text-muted-foreground">{formatCurrency(session.total_amount)}</span>
                                                 </TableCell>
-                                                <TableCell>{formatDate(order.created_at)}</TableCell>
+                                                <TableCell>{formatDate(session.last_order_time)}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -577,7 +615,7 @@ export default function CashierPage() {
                                                         {ph.method === 'cash' ? 'Tiền mặt' : ph.method}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell>{formatDate(ph.payment_time)}</TableCell>
+                                                <TableCell>{formatDate(ph.paid_at)}</TableCell>
                                                 <TableCell>
                                                     <span title="Thành công"><CheckCircle className="size-4 text-green-500" /></span>
                                                 </TableCell>
@@ -627,6 +665,33 @@ export default function CashierPage() {
                                         {formatCurrency(selectedPayment.total)}
                                     </span>
                                 </div>
+                            </div>
+                            <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="font-semibold">Chi tiết món trong session</h4>
+                                    <span className="text-sm text-muted-foreground">
+                                        {selectedSessionOrders.length} đơn / {selectedSessionItems.length} món
+                                    </span>
+                                </div>
+                                {selectedSessionItems.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">Chưa tải được chi tiết món.</p>
+                                ) : (
+                                    <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border p-3">
+                                        {selectedSessionItems.map((item: OrderItem & { order_id: number }, index: number) => (
+                                            <div key={`${item.order_id}-${item.id}-${index}`} className="flex items-center justify-between gap-4 text-sm">
+                                                <div className="min-w-0">
+                                                    <p className="font-medium truncate">{item.menu_item_name}</p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Đơn #{item.order_id} · SL {item.quantity}
+                                                    </p>
+                                                </div>
+                                                <span className="font-medium whitespace-nowrap">
+                                                    {formatCurrency(item.total ?? item.price * item.quantity)}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

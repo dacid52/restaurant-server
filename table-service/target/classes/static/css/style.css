@@ -1054,6 +1054,11 @@ input {
   gap: var(--space-3);
 }
 
+.order-item-meta {
+  display: flex;
+  flex-direction: column;
+}
+
 .order-item-qty {
   display: flex;
   align-items: center;

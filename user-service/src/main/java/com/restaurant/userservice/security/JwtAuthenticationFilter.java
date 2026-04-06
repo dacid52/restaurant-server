@@ -26,7 +26,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String path = request.getRequestURI();
-        if (path.equals("/api/users/login")) {
+        // Public endpoints — không cần token
+        if (path.equals("/api/users/login")
+                || path.equals("/api/users/register")
+                || path.startsWith("/api/users/verify-email")) {
             filterChain.doFilter(request, response);
             return;
         }

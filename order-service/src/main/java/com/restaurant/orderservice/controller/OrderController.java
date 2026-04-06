@@ -1,7 +1,9 @@
 package com.restaurant.orderservice.controller;
 
 import com.restaurant.orderservice.dto.OrderRequest;
-import com.restaurant.orderservice.entity.Order;
+import com.restaurant.orderservice.dto.OrderResponseDto;
+import com.restaurant.orderservice.dto.OrderSessionDetailDto;
+import com.restaurant.orderservice.dto.OrderSessionSummaryDto;
 import com.restaurant.orderservice.service.OrderService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -24,55 +26,90 @@ public class OrderController {
     private final OrderService orderService;
 
     @PostMapping
-    public ResponseEntity<Order> createOrder(@Valid @RequestBody OrderRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createOrder(request));
+    public ResponseEntity<OrderResponseDto> createOrder(@Valid @RequestBody OrderRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(orderService.getOrderResponseById(orderService.createOrder(request).getId()));
     }
 
     @GetMapping
-    public ResponseEntity<List<Order>> getAllOrders() {
-        return ResponseEntity.ok(orderService.getAllOrders());
+    public ResponseEntity<List<OrderResponseDto>> getAllOrders() {
+        return ResponseEntity.ok(orderService.getAllOrderResponses());
+    }
+
+    @GetMapping("/sessions")
+    public ResponseEntity<List<OrderSessionSummaryDto>> getAllSessions() {
+        return ResponseEntity.ok(orderService.getAllSessionSummaries());
+    }
+
+    @GetMapping("/sessions/detail")
+    public ResponseEntity<OrderSessionDetailDto> getSessionDetail(
+            @RequestParam Integer tableId,
+            @RequestParam String tableKey) {
+        return ResponseEntity.ok(orderService.getSessionDetail(tableId, tableKey));
+    }
+
+    @PostMapping("/sessions/confirm")
+    public ResponseEntity<Map<String, Object>> confirmSessionOrders(
+            @RequestBody Map<String, Object> payload,
+            HttpServletRequest request) {
+        Integer roleId = (Integer) request.getAttribute("roleId");
+        if (roleId != null && roleId != 1 && roleId != 2) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        Integer tableId = payload.containsKey("table_id") ? ((Number) payload.get("table_id")).intValue() : null;
+        String tableKey = (String) payload.get("table_key");
+        return ResponseEntity.ok(orderService.confirmSessionOrders(tableId, tableKey));
     }
 
     @GetMapping("/table/{tableId}")
-    public ResponseEntity<List<Order>> getOrdersByTable(@PathVariable Integer tableId, @RequestParam String tableKey) {
-        return ResponseEntity.ok(orderService.getOrdersByTable(tableId, tableKey));
+    public ResponseEntity<List<OrderResponseDto>> getOrdersByTable(@PathVariable Integer tableId, @RequestParam String tableKey) {
+        return ResponseEntity.ok(orderService.getOrderResponsesByTable(tableId, tableKey));
+    }
+
+    @GetMapping("/table/{tableId}/session-summary")
+    public ResponseEntity<OrderSessionSummaryDto> getSessionSummary(@PathVariable Integer tableId, @RequestParam String tableKey) {
+        return ResponseEntity.ok(orderService.getSessionSummary(tableId, tableKey));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Order> getOrderById(@PathVariable @NonNull Integer id) {
-        return ResponseEntity.ok(orderService.getOrderById(id));
+    public ResponseEntity<OrderResponseDto> getOrderById(@PathVariable @NonNull Integer id) {
+        return ResponseEntity.ok(orderService.getOrderResponseById(id));
     }
 
     @PutMapping("/{id}/status")
-    public ResponseEntity<Order> updateOrderStatus(@PathVariable @NonNull Integer id, @RequestBody Map<String, String> payload) {
+    public ResponseEntity<OrderResponseDto> updateOrderStatus(@PathVariable @NonNull Integer id, @RequestBody Map<String, String> payload) {
         String status = payload.get("status");
-        return ResponseEntity.ok(orderService.updateOrderStatus(id, status));
+        orderService.updateOrderStatus(id, status);
+        return ResponseEntity.ok(orderService.getOrderResponseById(id));
     }
 
     @PostMapping("/{id}/request-payment")
-    public ResponseEntity<Map<String, Object>> requestPayment(@PathVariable @NonNull Integer id) {
-        orderService.requestPayment(id);
-        return ResponseEntity.ok(Map.of("success", true, "message", "Đã gửi yêu cầu thanh toán"));
+    public ResponseEntity<Map<String, Object>> requestPayment(
+            @PathVariable @NonNull Integer id,
+            @RequestBody(required = false) Map<String, Object> payload) {
+        String tableKey = payload != null ? (String) payload.get("table_key") : null;
+        return ResponseEntity.ok(orderService.requestPayment(id, tableKey));
     }
 
     @PostMapping("/complete-payment")
     public ResponseEntity<Map<String, Object>> completePayment(@RequestBody Map<String, Object> payload) {
         log.info("📥 Complete payment request - Payload: {}", payload);
-        
+
         try {
             Integer tableId = payload.containsKey("table_id") ? ((Number) payload.get("table_id")).intValue() : null;
             String tableKey = (String) payload.get("table_key");
-            
+
             @SuppressWarnings("unchecked")
-            List<Integer> orderIds = payload.containsKey("order_ids") ? 
-                (List<Integer>) payload.get("order_ids") : List.of();
-            
+            List<Integer> orderIds = payload.containsKey("order_ids")
+                ? (List<Integer>) payload.get("order_ids") : List.of();
+
             if (tableId == null || orderIds.isEmpty()) {
                 throw new RuntimeException("Thiếu table_id hoặc order_ids");
             }
-            
+
             log.info("✅ Parsed data - Table: {}, Orders: {}", tableId, orderIds);
-            
+
             Map<String, Object> result = orderService.completePayment(tableId, tableKey, orderIds);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
