@@ -2,88 +2,113 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Đặt bàn – Nhà hàng</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/js/config.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/navbar.js"></script>
+  <style>
+    @media (max-width: 640px) {
+      body {
+        background-color: #f9fafb;
+      }
+      input, select, textarea {
+        font-size: 16px !important; /* Prevent zoom on iOS */
+      }
+    }
+  </style>
 </head>
 <body class="min-h-screen bg-gray-50">
   <div id="navbar"></div>
 
-  <main class="max-w-2xl mx-auto px-4 py-10">
-    <h1 class="text-2xl font-bold text-gray-800 mb-1">Đặt bàn</h1>
-    <p id="welcome-msg" class="text-sm text-gray-500 mb-6"></p>
+  <main class="w-full max-w-3xl mx-auto px-3 sm:px-4 py-4 sm:py-8 safe-bottom">
+    <!-- Header -->
+    <div class="mb-6 sm:mb-8">
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Đặt bàn</h1>
+      <p id="welcome-msg" class="text-xs sm:text-sm text-gray-600"></p>
+    </div>
 
-    <div id="error-box" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 mb-4 text-sm"></div>
+    <!-- Error Box -->
+    <div id="error-box" class="hidden bg-red-50 border-l-4 border-red-500 text-red-800 rounded-lg px-4 sm:px-5 py-3 sm:py-4 mb-4 sm:mb-6 text-sm sm:text-base">
+      <div class="font-medium">Có lỗi xảy ra</div>
+      <div id="error-text" class="text-red-700 mt-1"></div>
+    </div>
 
     <!-- Form -->
-    <form id="booking-form" class="bg-white rounded-2xl border shadow-sm p-6 space-y-5">
+    <form id="booking-form" class="bg-white rounded-xl sm:rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-6 space-y-4 sm:space-y-6">
+      
+      <!-- Chọn bàn -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Chọn bàn *</label>
+        <label class="block text-sm sm:text-base font-medium text-gray-800 mb-2">Chọn bàn <span class="text-red-500">*</span></label>
         <select id="table-select" required
-          class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+          class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
           <option value="">-- Đang tải danh sách bàn... --</option>
         </select>
       </div>
 
-      <div class="grid grid-cols-2 gap-4">
+      <!-- Ngày & Giờ -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Ngày *</label>
+          <label class="block text-sm sm:text-base font-medium text-gray-800 mb-2">Ngày <span class="text-red-500">*</span></label>
           <input id="date" type="date" required
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition" />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Giờ *</label>
+          <label class="block text-sm sm:text-base font-medium text-gray-800 mb-2">Giờ <span class="text-red-500">*</span></label>
           <input id="time" type="time" required
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition" />
         </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-4">
+      <!-- Thời gian & Số khách -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Thời gian dự kiến</label>
+          <label class="block text-sm sm:text-base font-medium text-gray-800 mb-2">Thời gian dự kiến</label>
           <select id="duration"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500">
+            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg text-base sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
             <option value="60">1 tiếng</option>
             <option value="90">1.5 tiếng</option>
-            <option value="120">2 tiếng</option>
+            <option value="120" selected>2 tiếng</option>
             <option value="150">2.5 tiếng</option>
             <option value="180">3 tiếng</option>
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Số khách *</label>
+          <label class="block text-sm sm:text-base font-medium text-gray-800 mb-2">Số khách <span class="text-red-500">*</span></label>
           <input id="party-size" type="number" required min="1" max="50" value="2"
-            class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500" />
+            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition" />
         </div>
       </div>
 
+      <!-- Ghi chú -->
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">Ghi chú</label>
+        <label class="block text-sm sm:text-base font-medium text-gray-800 mb-2">Ghi chú</label>
         <textarea id="notes" rows="3" placeholder="Yêu cầu đặc biệt, dịp đặc biệt..."
-          class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"></textarea>
+          class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition resize-none"></textarea>
       </div>
 
+      <!-- Submit Button -->
       <button type="submit" id="btn-submit"
-        class="w-full bg-orange-600 text-white font-semibold py-3 rounded-lg hover:bg-orange-700 disabled:opacity-60 transition">
+        class="w-full bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white font-semibold py-3 sm:py-3.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 text-base sm:text-lg">
         Xác nhận đặt bàn
       </button>
     </form>
 
-    <!-- Success -->
-    <div id="success-card" class="hidden bg-white rounded-2xl border shadow-sm p-8 text-center">
-      <div class="text-5xl mb-4">🎉</div>
-      <h2 class="text-xl font-bold text-gray-800 mb-2">Đặt bàn thành công!</h2>
-      <p class="text-gray-500 text-sm mb-6">Chúng tôi đã nhận được yêu cầu và sẽ liên hệ xác nhận sớm nhất.</p>
-      <div class="flex flex-col gap-3">
+    <!-- Success Card -->
+    <div id="success-card" class="hidden bg-white rounded-xl sm:rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 text-center">
+      <div class="text-6xl sm:text-7xl mb-4">🎉</div>
+      <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Đặt bàn thành công!</h2>
+      <p class="text-sm sm:text-base text-gray-600 mb-6">Chúng tôi đã nhận được yêu cầu và sẽ liên hệ xác nhận sớm nhất.</p>
+      <div class="flex flex-col gap-3 sm:gap-4">
         <a href="/my-reservations/"
-          class="bg-orange-600 text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-orange-700 transition">
+          class="bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white font-semibold px-4 sm:px-6 py-3 sm:py-3 rounded-lg transition-colors duration-200 text-base inline-block">
           Xem lịch sử đặt bàn
         </a>
         <button onclick="resetForm()"
-          class="border border-gray-300 text-gray-700 px-6 py-2.5 rounded-lg hover:bg-gray-50 transition">
+          class="border border-gray-300 hover:bg-gray-50 active:bg-gray-100 text-gray-700 font-semibold px-4 sm:px-6 py-3 sm:py-3 rounded-lg transition-colors duration-200 text-base">
           Đặt thêm bàn
         </button>
       </div>
@@ -128,10 +153,16 @@
       e.preventDefault();
       const btn = document.getElementById('btn-submit');
       const errorBox = document.getElementById('error-box');
+      const errorText = document.getElementById('error-text');
       errorBox.classList.add('hidden');
 
       const tableId = document.getElementById('table-select').value;
-      if (!tableId) { errorBox.textContent = 'Vui lòng chọn bàn'; errorBox.classList.remove('hidden'); return; }
+      if (!tableId) {
+        errorText.textContent = 'Vui lòng chọn bàn';
+        errorBox.classList.remove('hidden');
+        errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
 
       const date = document.getElementById('date').value;
       const time = document.getElementById('time').value;
@@ -150,8 +181,9 @@
           `/api/tables/${tableId}/reservations/availability?start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}`
         );
         if (!availRes.available) {
-          errorBox.textContent = 'Bàn này đã có đặt chỗ trong khung giờ đã chọn. Vui lòng chọn bàn hoặc giờ khác.';
+          errorText.textContent = 'Bàn này đã có đặt chỗ trong khung giờ đã chọn. Vui lòng chọn bàn hoặc giờ khác.';
           errorBox.classList.remove('hidden');
+          errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
           btn.disabled = false;
           btn.textContent = 'Xác nhận đặt bàn';
           return;
@@ -169,9 +201,11 @@
         });
         document.getElementById('booking-form').classList.add('hidden');
         document.getElementById('success-card').classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch (err) {
-        errorBox.textContent = err.message;
+        errorText.textContent = err.message || 'Có lỗi xảy ra. Vui lòng thử lại.';
         errorBox.classList.remove('hidden');
+        errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
         btn.disabled = false;
         btn.textContent = 'Xác nhận đặt bàn';
       }
@@ -182,6 +216,7 @@
       document.getElementById('booking-form').classList.remove('hidden');
       document.getElementById('success-card').classList.add('hidden');
       document.getElementById('date').min = new Date().toISOString().split('T')[0];
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   </script>
 </body>
