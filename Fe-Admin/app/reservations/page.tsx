@@ -45,7 +45,8 @@ interface CheckinResult {
   customer_phone: string;
   party_size: number;
   table_name: string;
-  qr_image_base64?: string;
+  qr_code?: string;         // base64 PNG từ generateDynamicQRCode
+  url?: string;             // URL được mã hóa trong QR
   expires_at?: string;
   seconds_remaining?: number;
 }
@@ -405,11 +406,17 @@ export default function ReservationsPage() {
                     {new Date(checkinResult.expires_at).toLocaleString('vi-VN')}
                   </p>
                 )}
+                {checkinResult.seconds_remaining != null && (
+                  <p className="text-muted-foreground">
+                    <span className="font-medium text-foreground">Còn hiệu lực:</span>{' '}
+                    {Math.floor(checkinResult.seconds_remaining / 60)} phút
+                  </p>
+                )}
               </div>
-              {checkinResult.qr_image_base64 ? (
+              {checkinResult.qr_code ? (
                 <div className="flex justify-center">
                   <img
-                    src={`data:image/png;base64,${checkinResult.qr_image_base64}`}
+                    src={checkinResult.qr_code}
                     alt="QR Code"
                     className="w-48 h-48 border rounded-lg shadow"
                   />

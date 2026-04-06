@@ -31,6 +31,18 @@
     let allItems = [];
     let activeCategory = 'all';
 
+    function getImageUrl(imageUrl) {
+      if (!imageUrl) return '';
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
+      const base = window.location.protocol + '//' + window.location.hostname + ':3000';
+      if (imageUrl.startsWith('/api/images/')) return base + imageUrl;
+      if (imageUrl.startsWith('/image-service/uploads/'))
+        return base + imageUrl.replace('/image-service/uploads/', '/api/images/');
+      if (!imageUrl.includes('/') && imageUrl.includes('.'))
+        return base + '/api/images/foods/' + imageUrl;
+      return imageUrl;
+    }
+
     function renderGrid() {
       const filtered = activeCategory === 'all'
         ? allItems
@@ -46,7 +58,7 @@
       grid.classList.remove('hidden');
       grid.innerHTML = filtered.map(item => `
         <div class="bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition">
-          ${item.imageUrl ? `<img src="${escHtml(item.imageUrl)}" alt="${escHtml(item.name)}" class="w-full h-44 object-cover" />` : ''}
+          ${item.image_url ? `<img src="${getImageUrl(item.image_url)}" alt="${escHtml(item.name)}" class="w-full h-44 object-cover" onerror="this.style.display='none'" />` : ''}
           <div class="p-4">
             ${item.categoryName ? `<span class="text-xs text-orange-600 font-medium uppercase tracking-wide">${escHtml(item.categoryName)}</span>` : ''}
             <h3 class="font-semibold text-gray-800 mt-1 mb-1">${escHtml(item.name)}</h3>
