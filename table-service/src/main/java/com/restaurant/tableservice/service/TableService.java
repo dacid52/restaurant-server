@@ -134,13 +134,21 @@ public class TableService {
         return overlapCount == null || overlapCount == 0;
     }
 
+    @Transactional
     public com.restaurant.tableservice.entity.TableReservation updateReservationStatus(Integer id, String status) {
         if (id == null) throw new RuntimeException("Thiếu reservation_id");
         if (status == null || status.isBlank()) throw new RuntimeException("Thiếu trạng thái");
         com.restaurant.tableservice.entity.TableReservation reservation = tableReservationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đặt bàn"));
         reservation.setStatus(status);
-        return tableReservationRepository.save(reservation);
+        tableReservationRepository.save(reservation);
+
+        // Khi hoàn thành hoặc khách không đến → đóng phiên bàn (invalidate key + reset bàn về Trống)
+        if ("completed".equals(status) || "no_show".equals(status)) {
+            invalidateTableKey(reservation.getTableId());
+        }
+
+        return reservation;
     }
 
     public List<com.restaurant.tableservice.entity.TableReservation> getMyReservations(@NonNull Integer customerId) {
