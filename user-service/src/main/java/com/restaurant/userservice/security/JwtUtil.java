@@ -20,11 +20,12 @@ public class JwtUtil {
         this.expiration = expiration;
     }
 
-    public String generateToken(Integer userId, String username, Integer roleId) {
+    public String generateToken(Integer userId, String username, Integer roleId, String roleName) {
         return Jwts.builder()
                 .claim("id", userId)
                 .claim("username", username)
                 .claim("role_id", roleId)
+                .claim("role_name", roleName)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(secretKey)

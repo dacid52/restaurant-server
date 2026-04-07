@@ -6,6 +6,12 @@ rem Portable Maven folder
 set "MAVEN_DIR=%~dp0.maven\apache-maven-3.9.6"
 set "MVN_CMD=mvn"
 set "SPRING_PROFILE=local"
+if "%JWT_SECRET%"=="" (
+  for /f %%I in ('powershell -NoProfile -Command "([guid]::NewGuid().ToString(\"N\") + [guid]::NewGuid().ToString(\"N\"))"') do set "JWT_SECRET=%%I"
+)
+if "%INTERNAL_SERVICE_TOKEN%"=="" (
+  for /f %%I in ('powershell -NoProfile -Command "[guid]::NewGuid().ToString(\"N\")"') do set "INTERNAL_SERVICE_TOKEN=%%I"
+)
 set PORTS=3000 3002 3003 3004 3005 3006 3007 3008 3011
 
 where mvn >nul 2>nul
@@ -30,6 +36,8 @@ echo Portable Maven is ready.
 echo =======================================================
 echo     START RESTAURANT MICROSERVICES
 echo =======================================================
+echo JWT secret is generated for this run.
+echo Internal service token is generated for this run.
 echo MySQL local: Laragon ^| user=root ^| password=empty
 echo Cleaning old listeners on project ports...
 for %%P in (%PORTS%) do (

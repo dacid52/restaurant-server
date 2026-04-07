@@ -76,7 +76,7 @@ public class TableKeyController {
     public void generateAccess(@PathVariable @NonNull Integer id,
                                 HttpServletResponse response) throws IOException {
         try {
-            Map<String, Object> result = tableService.generateDynamicQRCode(id);
+            Map<String, Object> result = tableService.generateDynamicQRCodeForPublicAccess(id);
             String key = (String) result.get("key");
             response.sendRedirect("/index.html?tableId=" + id + "&tableKey=" + key);
         } catch (RuntimeException e) {

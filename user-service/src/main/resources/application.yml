@@ -26,9 +26,10 @@ spring:
             enable: true
 
 jwt:
-  secret: ${JWT_SECRET:restaurant_secret_key_12345678900}
+  secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000}
 
 app:
   base-url: ${APP_BASE_URL:http://localhost:3000}
   frontend-url: ${APP_FRONTEND_URL:http://localhost:3011}
+

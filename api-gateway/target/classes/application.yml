@@ -30,6 +30,8 @@ spring:
             allowedHeaders: "*"
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+        - RemoveRequestHeader=X-Internal-Call
+        - RemoveRequestHeader=X-Service-Token
         # Strip Origin trước khi forward đến backend — CORS chỉ do Gateway xử lý.
         # Backend services không cần CORS config, tránh double-block khi truy cập qua LAN IP.
         - RemoveRequestHeader=Origin
@@ -38,6 +40,11 @@ spring:
           uri: http://localhost:3005
           predicates:
             - Path=/api/users/**
+
+        - id: user-service-roles
+          uri: http://localhost:3005
+          predicates:
+            - Path=/api/roles/**
         
         - id: menu-service
           uri: http://localhost:3002
@@ -88,3 +95,5 @@ spring:
           uri: http://localhost:3003
           predicates:
             - Path=/ws/order/**
+
+

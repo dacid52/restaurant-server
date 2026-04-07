@@ -64,7 +64,12 @@ public class AuthService {
             throw new RuntimeException("Thông tin đăng nhập không đúng");
         }
 
-        String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole().getId());
+        String token = jwtUtil.generateToken(
+                user.getId(),
+                user.getUsername(),
+                user.getRole().getId(),
+                user.getRole().getName()
+        );
         return new AuthResponse(userService.mapToDto(user), token);
     }
 

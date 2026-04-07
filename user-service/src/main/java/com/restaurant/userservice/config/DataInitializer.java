@@ -31,7 +31,7 @@ public class DataInitializer {
             }
 
             // Ensure other default roles exist
-            String[] defaultRoles = {"ADMIN", "STAFF", "KITCHEN"};
+            String[] defaultRoles = {"ADMIN", "STAFF", "KITCHEN", "MANAGER", "CASHIER"};
             for (String roleName : defaultRoles) {
                 if (roleRepository.findByName(roleName).isEmpty()) {
                     Role role = new Role();

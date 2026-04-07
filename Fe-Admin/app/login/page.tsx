@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import api from "@/lib/axios";
+import { ALLOWED_ADMIN_ROLES, getDefaultPath } from "@/lib/auth";
 
 interface User {
   id: number;
@@ -50,6 +51,12 @@ export default function LoginPage() {
 
       const { token, user } = response.data;
 
+      // Chỉ cho phép ADMIN, MANAGER, CASHIER, KITCHEN, STAFF vào hệ thống quản trị
+      if (!ALLOWED_ADMIN_ROLES.some((r) => r.toLowerCase() === user.roleName?.toLowerCase())) {
+        setError("Tài khoản không có quyền truy cập hệ thống quản trị.");
+        return;
+      }
+
       // Save token and user to localStorage
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
@@ -57,8 +64,8 @@ export default function LoginPage() {
       // Fetch user info to verify token
       await api.get("/users/me");
 
-      // Redirect to dashboard
-      router.push("/dashboard");
+      // Redirect to the default page for this role
+      router.push(getDefaultPath(user.roleName));
     } catch (err) {
       if (err instanceof Error) {
         setError("Tên đăng nhập hoặc mật khẩu không đúng");

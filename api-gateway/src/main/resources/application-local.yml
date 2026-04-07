@@ -4,6 +4,13 @@ server:
 spring:
   cloud:
     gateway:
+      default-filters:
+        # Deduplicate CORS headers in case a backend service also sets them
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
+        - RemoveRequestHeader=X-Internal-Call
+        - RemoveRequestHeader=X-Service-Token
+        # Strip Origin before forwarding — CORS is handled by Gateway only
+        - RemoveRequestHeader=Origin
       globalcors:
         corsConfigurations:
           '[/**]':

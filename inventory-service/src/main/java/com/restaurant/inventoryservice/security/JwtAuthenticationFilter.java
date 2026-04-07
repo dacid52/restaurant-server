@@ -5,6 +5,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.lang.NonNull;
@@ -14,10 +15,15 @@ import java.io.IOException;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
+    private static final String ADMIN_ROLE = "ADMIN";
+    private static final String STAFF_ROLE = "STAFF";
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil) {
+    private final JwtUtil jwtUtil;
+    private final String internalServiceToken;
+
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, @Value("${internal.service-token:}") String internalServiceToken) {
         this.jwtUtil = jwtUtil;
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
@@ -25,7 +31,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         // Allow internal Feign calls from other microservices (e.g. kitchen-service batch-deduct)
-        if ("true".equals(request.getHeader("X-Internal-Call"))) {
+        if (isTrustedInternalCall(request)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -58,10 +64,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             request.setAttribute("userId", claims.get("id"));
             request.setAttribute("username", claims.get("username"));
             request.setAttribute("roleId", claims.get("role_id"));
-            
-            Integer roleId = (Integer) claims.get("role_id");
-            // Admin (1), Manager (2) and Inventory Staff (usually)
-            if (roleId != 1 && roleId != 2) {
+            String roleName = claims.get("role_name", String.class);
+            request.setAttribute("roleName", roleName);
+
+            // Inventory: ADMIN, MANAGER, KITCHEN can write (+ STAFF for backward compat)
+            boolean allowed = ADMIN_ROLE.equalsIgnoreCase(roleName)
+                    || STAFF_ROLE.equalsIgnoreCase(roleName)
+                    || "MANAGER".equalsIgnoreCase(roleName)
+                    || "KITCHEN".equalsIgnoreCase(roleName);
+            if (!allowed) {
                  response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                  return;
             }
@@ -72,5 +83,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isTrustedInternalCall(HttpServletRequest request) {
+        String header = request.getHeader("X-Service-Token");
+        return internalServiceToken != null
+                && !internalServiceToken.isBlank()
+                && internalServiceToken.equals(header);
     }
 }

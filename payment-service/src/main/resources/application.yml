@@ -17,8 +17,9 @@ spring:
     show-sql: true
 
 jwt:
-  secret: ${JWT_SECRET:restaurant_secret_key_12345678900}
+  secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000}
 
 services:
   order: http://localhost:3003
+

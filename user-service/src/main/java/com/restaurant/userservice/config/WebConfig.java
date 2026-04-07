@@ -4,7 +4,6 @@ import com.restaurant.userservice.security.JwtAuthenticationFilter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -20,21 +19,9 @@ public class WebConfig implements WebMvcConfigurer {
         this.rateLimitInterceptor = rateLimitInterceptor;
     }
 
-    // BUG-029: Giới hạn CORS chỉ cho các origin đã biết
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
-                .allowedOriginPatterns(
-                        "http://localhost:3010",
-                        "http://localhost:3011",
-                        "http://localhost:3000",
-                        "${APP_ALLOWED_ORIGINS:http://localhost:3010,http://localhost:3011}"
-                )
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true)
-                .maxAge(3600);
-    }
+    // CORS is handled exclusively by the API Gateway.
+    // Do NOT add addCorsMappings here — doing so causes duplicate
+    // Access-Control-Allow-Origin headers when the gateway also sets the header.
 
         // BUG-023: Rate limiting cho các endpoint đăng nhập / đăng ký / verify-email / verify-otp
     @Override

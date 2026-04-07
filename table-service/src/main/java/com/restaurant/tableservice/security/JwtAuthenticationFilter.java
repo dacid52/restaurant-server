@@ -5,26 +5,33 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import org.springframework.stereotype.Component;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
+    private static final String ADMIN_ROLE = "ADMIN";
+    private static final String STAFF_ROLE = "STAFF";
+    private static final String CUSTOMER_ROLE = "CUSTOMER";
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil) {
+    private final JwtUtil jwtUtil;
+    private final String internalServiceToken;
+
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, @Value("${internal.service-token:}") String internalServiceToken) {
         this.jwtUtil = jwtUtil;
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
-        if ("true".equals(request.getHeader("X-Internal-Call"))) {
+        if (isTrustedInternalCall(request)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -32,38 +39,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
-        // OPTIONS preflight — phải pass qua ngay, không check JWT
         if ("OPTIONS".equalsIgnoreCase(method)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Các path không cần JWT — khách tại bàn truy cập mà không có tài khoản
-        if (path.contains("validate-key")
-                || path.contains("qr/static")
-                || path.contains("qr/dynamic")
-                || path.contains("generate-access")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
+        boolean publicEndpoint = isPublicEndpoint(path, method);
         String authHeader = request.getHeader("Authorization");
 
-        // /reservations/my — bắt buộc có token (customer xem lịch sử đặt bàn)
-        if (path.endsWith("/reservations/my")) {
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                return;
-            }
-            // token validated below — skip the anonymous GET shortcut
-        } else if (method.equals("GET") && (authHeader == null || !authHeader.startsWith("Bearer "))) {
-            // GET requests không cần token (xem danh sách bàn, check availability)
-            filterChain.doFilter(request, response);
+        if (!publicEndpoint && (authHeader == null || !authHeader.startsWith("Bearer "))) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            filterChain.doFilter(request, response);
             return;
         }
 
@@ -75,27 +65,56 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             request.setAttribute("username", claims.get("username"));
             request.setAttribute("roleId", claims.get("role_id"));
 
-            Integer roleId = ((Number) claims.get("role_id")).intValue();
+            String roleName = claims.get("role_name", String.class);
+            request.setAttribute("roleName", roleName);
 
-            // Quyền theo role:
-            // role 1-4 (ADMIN/MANAGER/CASHIER/WAITER): full access
-            // role 5 (CUSTOMER): chỉ được POST /tables/{id}/reservations và GET /reservations/my
-            boolean isCustomer = (roleId == 5);
-
-            if (isCustomer) {
-                boolean allowedForCustomer = (method.equals("POST") && path.matches(".*/tables/\\d+/reservations"))
-                        || path.endsWith("/reservations/my");
-                if (!allowedForCustomer) {
+            if (CUSTOMER_ROLE.equalsIgnoreCase(roleName)) {
+                boolean customerAllowed = isCustomerAllowed(path, method) || publicEndpoint;
+                if (!customerAllowed) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    return;
+                }
+            } else if (!publicEndpoint) {
+                boolean staffAllowed = ADMIN_ROLE.equalsIgnoreCase(roleName)
+                        || STAFF_ROLE.equalsIgnoreCase(roleName)
+                        || "MANAGER".equalsIgnoreCase(roleName)
+                        || "CASHIER".equalsIgnoreCase(roleName);
+                if (!staffAllowed) {
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     return;
                 }
             }
-
         } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isPublicEndpoint(String path, String method) {
+        if (path.contains("generate-access") || path.contains("validate-key")) {
+            return true;
+        }
+
+        if (!"GET".equals(method)) {
+            return false;
+        }
+
+        return path.equals("/api/tables")
+                || path.matches("/api/tables/\\d+")
+                || path.matches("/api/tables/\\d+/reservations/availability");
+    }
+
+    private boolean isCustomerAllowed(String path, String method) {
+        return ("POST".equals(method) && path.matches("/api/tables/\\d+/reservations"))
+                || path.endsWith("/reservations/my");
+    }
+
+    private boolean isTrustedInternalCall(HttpServletRequest request) {
+        String header = request.getHeader("X-Service-Token");
+        return internalServiceToken != null
+                && !internalServiceToken.isBlank()
+                && internalServiceToken.equals(header);
     }
 }

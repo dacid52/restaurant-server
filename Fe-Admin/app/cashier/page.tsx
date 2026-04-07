@@ -50,7 +50,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import api from "@/lib/axios";
-import { paymentSocket } from "@/lib/socket";
+import { paymentSocket, orderSocket } from "@/lib/socket";
 
 // Types
 interface WaitingPayment {
@@ -167,6 +167,46 @@ export default function CashierPage() {
         return () => {
             mounted = false;
             paymentSocket.disconnect();
+        };
+    }, []);
+
+    // Lắng nghe đơn hàng mới + cập nhật trạng thái từ order-service
+    useEffect(() => {
+        let mounted = true;
+
+        orderSocket.connect(
+            () => {
+                if (!mounted) return;
+
+                // Khách vừa đặt món mới
+                orderSocket.subscribe("/topic/order.created", (data) => {
+                    if (!mounted) return;
+                    toast.info(`Đơn hàng mới - Bàn ${data?.table_id ?? ""}`, {
+                        description: "Khách vừa đặt thêm món",
+                    });
+                    mutate("/orders/sessions");
+                    mutate("/payments/waiting");
+                });
+
+                // Trạng thái đơn thay đổi (bếp xác nhận, hoàn thành,…)
+                orderSocket.subscribe("/topic/order.status.updated", (data) => {
+                    if (!mounted) return;
+                    mutate("/orders/sessions");
+                    mutate("/payments/waiting");
+                    if (data?.table_id != null && data?.table_key) {
+                        mutate(`/orders/sessions/detail?tableId=${data.table_id}&tableKey=${encodeURIComponent(data.table_key)}`);
+                    }
+                });
+            },
+            (err) => {
+                if (!mounted) return;
+                console.error("Order socket error (cashier):", err);
+            }
+        );
+
+        return () => {
+            mounted = false;
+            orderSocket.disconnect();
         };
     }, []);
 

@@ -16,6 +16,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String ADMIN_ROLE = "ADMIN";
+
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService tokenBlacklistService;
 
@@ -63,12 +65,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             request.setAttribute("userId", claims.get("id"));
             request.setAttribute("username", claims.get("username"));
             request.setAttribute("roleId", claims.get("role_id"));
+            String roleName = claims.get("role_name", String.class);
+            request.setAttribute("roleName", roleName);
 
-            // Role authorization checks — POST /api/users chỉ cho ADMIN (role 1)
+            // Role authorization checks — POST /api/users chỉ cho ADMIN
             // Ngoại lệ: /logout đã được bỏ qua ở trên (public endpoint)
             if (path.startsWith("/api/users") && request.getMethod().equals("POST")
                     && !path.equals("/api/users/logout")) {
-                 if (((Integer) claims.get("role_id")) != 1) {
+                 if (!ADMIN_ROLE.equalsIgnoreCase(roleName)) {
                      response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                      return;
                  }

@@ -46,15 +46,11 @@ public class TableController {
         payload = new java.util.HashMap<>(payload);
 
         Object userIdAttr = request.getAttribute("userId");
-        Object roleIdAttr = request.getAttribute("roleId");
+        String roleName = (String) request.getAttribute("roleName");
         if (userIdAttr != null) {
-            Integer roleId = roleIdAttr != null ? ((Number) roleIdAttr).intValue() : 0;
-            // Không phụ thuộc cứng roleId == 5 vì dữ liệu roles có thể khác id giữa các môi trường.
-            // Nếu request đã đăng nhập nhưng không truyền customer_id, mặc định gán theo user JWT.
-            // Admin/staff vẫn có thể truyền customer_id cụ thể để đặt hộ khách.
             if (!payload.containsKey("customer_id") || payload.get("customer_id") == null) {
                 payload.put("customer_id", ((Number) userIdAttr).intValue());
-            } else if (roleId == 5) {
+            } else if ("CUSTOMER".equalsIgnoreCase(roleName)) {
                 // BUG-020: CUSTOMER không được mạo danh customer_id khác
                 payload.put("customer_id", ((Number) userIdAttr).intValue());
             }
@@ -186,3 +182,5 @@ public class TableController {
         return ResponseEntity.ok().build();
     }
 }
+
+

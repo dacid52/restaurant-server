@@ -43,6 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             request.setAttribute("userId", claims.get("id"));
             request.setAttribute("username", claims.get("username"));
             request.setAttribute("roleId", claims.get("role_id"));
+            request.setAttribute("roleName", claims.get("role_name", String.class));
         } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;

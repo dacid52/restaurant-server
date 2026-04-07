@@ -320,11 +320,22 @@ export default function OrdersManagementPage() {
                     }
                 };
 
+                // Đơn mới từ khách hàng (QR / web)
+                orderSocket.subscribe("/topic/order.created", async (data) => {
+                    if (!mounted) return;
+                    await revalidateOrdersView();
+                    toast.info(`Đơn hàng mới`, {
+                        description: `Bàn ${data?.table_id ?? ""} vừa đặt thêm món`,
+                    });
+                });
+
+                // Bếp / admin cập nhật trạng thái đơn
                 orderSocket.subscribe("/topic/order.status.updated", async () => {
                     if (!mounted) return;
                     await revalidateOrdersView();
                 });
 
+                // Thanh toán hoàn tất
                 orderSocket.subscribe("/topic/payment.completed", async () => {
                     if (!mounted) return;
                     await revalidateOrdersView();

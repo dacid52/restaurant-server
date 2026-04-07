@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.InetAddress;
@@ -54,6 +55,7 @@ public class TableService {
         return tableReservationRepository.findByTableIdOrderByStartTimeAsc(tableId);
     }
 
+    @Transactional(isolation = Isolation.SERIALIZABLE)
     public com.restaurant.tableservice.entity.TableReservation createReservation(Integer tableId, Map<String, Object> payload) {
         if (tableId == null) throw new RuntimeException("Thiếu table_id");
         getTableById(tableId);
@@ -416,6 +418,20 @@ public class TableService {
             res.put("upcoming_reservation_start", upcoming.get().getStartTime());
         }
         return res;
+    }
+
+    /**
+     * Public access flow for static QR.
+     * Security hardening: do not rotate/invalidate key if table already has an active session.
+     * This prevents unauthenticated users from force-killing in-use sessions by repeatedly hitting generate-access.
+     */
+    @Transactional
+    public Map<String, Object> generateDynamicQRCodeForPublicAccess(@NonNull Integer id) {
+        getTableById(id);
+        if (tableKeyRepository.findActiveKey(id).isPresent()) {
+            throw new RuntimeException("Ban dang duoc su dung. Vui long lien he nhan vien de ho tro.");
+        }
+        return generateDynamicQRCode(id);
     }
 
     private String getLocalIpAddress() {

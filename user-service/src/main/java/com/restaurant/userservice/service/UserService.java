@@ -9,16 +9,18 @@ import com.restaurant.userservice.repository.RoleRepository;
 import com.restaurant.userservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.mindrot.jbcrypt.BCrypt;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
-import org.springframework.lang.NonNull;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
+
+    private static final String ADMIN_ROLE = "ADMIN";
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -31,18 +33,18 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserDto getUserById(@NonNull Integer id) {
         return userRepository.findById(id).map(this::mapToDto)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new RuntimeException("Khong tim thay nguoi dung"));
     }
 
     @Transactional
     @SuppressWarnings("null")
     public UserDto createUser(UserCreateRequest request) {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new RuntimeException("Tên đăng nhập đã tồn tại");
+            throw new RuntimeException("Ten dang nhap da ton tai");
         }
 
         Role role = roleRepository.findById(request.getRoleId())
-                .orElseThrow(() -> new RuntimeException("Vai trò không hợp lệ"));
+                .orElseThrow(() -> new RuntimeException("Vai tro khong hop le"));
 
         User user = new User();
         user.setUsername(request.getUsername());
@@ -59,21 +61,22 @@ public class UserService {
 
     @Transactional
     @SuppressWarnings("null")
-    public UserDto updateUser(@NonNull Integer id, UserUpdateRequest request, Integer currentUserId, Integer currentUserRoleId) {
+    public UserDto updateUser(@NonNull Integer id, UserUpdateRequest request, Integer currentUserId, String currentUserRoleName) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new RuntimeException("Khong tim thay nguoi dung"));
 
-        if (!user.getId().equals(currentUserId) && currentUserId != 1 && currentUserRoleId != 1) {
-            throw new RuntimeException("Không có quyền cập nhật thông tin người dùng khác");
+        boolean isAdmin = ADMIN_ROLE.equalsIgnoreCase(currentUserRoleName);
+        if (!user.getId().equals(currentUserId) && !isAdmin) {
+            throw new RuntimeException("Khong co quyen cap nhat thong tin nguoi dung khac");
         }
 
-        if (request.getRoleId() != null && currentUserRoleId != 1) {
-            throw new RuntimeException("Không có quyền cập nhật vai trò");
+        if (request.getRoleId() != null && !isAdmin) {
+            throw new RuntimeException("Khong co quyen cap nhat vai tro");
         }
 
         if (request.getRoleId() != null) {
             Role role = roleRepository.findById(request.getRoleId())
-                    .orElseThrow(() -> new RuntimeException("Vai trò không hợp lệ"));
+                    .orElseThrow(() -> new RuntimeException("Vai tro khong hop le"));
             user.setRole(role);
         }
 
@@ -94,10 +97,7 @@ public class UserService {
     @SuppressWarnings("null")
     public void deleteUser(@NonNull Integer id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
-        
-        // Cần thêm logic kiểm tra đơn hàng xem user có thể xoá không nếu cần
-        // Tuy nhiên theo thiết kế, ta sẽ chỉ catch lỗi constraints ở DB thay vì query
+                .orElseThrow(() -> new RuntimeException("Khong tim thay nguoi dung"));
         userRepository.delete(user);
     }
 

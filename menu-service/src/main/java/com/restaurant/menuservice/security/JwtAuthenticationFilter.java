@@ -5,6 +5,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.lang.NonNull;
 
@@ -14,17 +15,21 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
+    private static final String ADMIN_ROLE = "ADMIN";
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil) {
+    private final JwtUtil jwtUtil;
+    private final String internalServiceToken;
+
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, @Value("${internal.service-token:}") String internalServiceToken) {
         this.jwtUtil = jwtUtil;
+        this.internalServiceToken = internalServiceToken;
     }
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
-        if ("true".equals(request.getHeader("X-Internal-Call"))) {
+        if (isTrustedInternalCall(request)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -49,10 +54,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             request.setAttribute("userId", claims.get("id"));
             request.setAttribute("username", claims.get("username"));
             request.setAttribute("roleId", claims.get("role_id"));
-            
-            Integer roleId = (Integer) claims.get("role_id");
-            // Only admin (role 1) can modify menu
-            if (roleId != 1) {
+            String roleName = claims.get("role_name", String.class);
+            request.setAttribute("roleName", roleName);
+
+            // ADMIN, MANAGER, KITCHEN (+ STAFF for backward compat) can modify menu
+            boolean canModifyMenu = ADMIN_ROLE.equalsIgnoreCase(roleName)
+                    || "MANAGER".equalsIgnoreCase(roleName)
+                    || "KITCHEN".equalsIgnoreCase(roleName)
+                    || "STAFF".equalsIgnoreCase(roleName);
+            if (!canModifyMenu) {
                  response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                  return;
             }
@@ -63,5 +73,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isTrustedInternalCall(HttpServletRequest request) {
+        String header = request.getHeader("X-Service-Token");
+        return internalServiceToken != null
+                && !internalServiceToken.isBlank()
+                && internalServiceToken.equals(header);
     }
 }

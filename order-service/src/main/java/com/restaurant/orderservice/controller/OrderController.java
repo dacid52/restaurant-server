@@ -23,6 +23,11 @@ import org.springframework.lang.NonNull;
 @RequiredArgsConstructor
 public class OrderController {
 
+    private static final String ADMIN_ROLE = "ADMIN";
+    private static final String STAFF_ROLE = "STAFF";
+    private static final String MANAGER_ROLE = "MANAGER";
+    private static final String CASHIER_ROLE = "CASHIER";
+
     private final OrderService orderService;
 
     @PostMapping
@@ -52,8 +57,12 @@ public class OrderController {
     public ResponseEntity<Map<String, Object>> confirmSessionOrders(
             @RequestBody Map<String, Object> payload,
             HttpServletRequest request) {
-        Integer roleId = (Integer) request.getAttribute("roleId");
-        if (roleId != null && roleId != 1 && roleId != 2) {
+        String roleName = (String) request.getAttribute("roleName");
+        boolean isStaffLevel = ADMIN_ROLE.equalsIgnoreCase(roleName)
+                || STAFF_ROLE.equalsIgnoreCase(roleName)
+                || MANAGER_ROLE.equalsIgnoreCase(roleName)
+                || CASHIER_ROLE.equalsIgnoreCase(roleName);
+        if (!isStaffLevel) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -122,9 +131,13 @@ public class OrderController {
 
     @PostMapping("/{id}/confirm")
     public ResponseEntity<Map<String, String>> confirmOrder(@PathVariable @NonNull Integer id, HttpServletRequest request) {
-        Integer roleId = (Integer) request.getAttribute("roleId");
-        if (roleId != null && roleId != 1 && roleId != 2) {
-             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        String roleName = (String) request.getAttribute("roleName");
+        boolean isStaffLevel = ADMIN_ROLE.equalsIgnoreCase(roleName)
+                || STAFF_ROLE.equalsIgnoreCase(roleName)
+                || MANAGER_ROLE.equalsIgnoreCase(roleName)
+                || CASHIER_ROLE.equalsIgnoreCase(roleName);
+        if (!isStaffLevel) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         orderService.confirmOrder(id);
         return ResponseEntity.ok(Map.of("message", "Đã gửi bếp"));

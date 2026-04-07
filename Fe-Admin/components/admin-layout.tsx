@@ -34,7 +34,7 @@ import {
     SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { logout, getUser } from "@/lib/auth";
+import { logout, getUser, isAdminUser, canAccessPath, getDefaultPath } from "@/lib/auth";
 
 const menuItems = [
     {
@@ -93,7 +93,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
     const [isDark, setIsDark] = useState(false);
-    const [user, setUser] = useState<{ fullName?: string; username?: string } | null>(null);
+    const [user, setUser] = useState<{ fullName?: string; username?: string; roleName?: string } | null>(null);
 
     useEffect(() => {
         const userData = getUser();
@@ -101,12 +101,22 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             router.push("/login");
             return;
         }
+        if (!isAdminUser()) {
+            logout();
+            router.push("/login");
+            return;
+        }
+        // Route guard: redirect to default page if current path is not allowed for this role
+        if (!canAccessPath(userData.roleName, pathname)) {
+            router.replace(getDefaultPath(userData.roleName));
+            return;
+        }
         setUser(userData);
 
         // Check for dark mode preference
         const isDarkMode = document.documentElement.classList.contains("dark");
         setIsDark(isDarkMode);
-    }, [router]);
+    }, [router, pathname]);
 
     const toggleDarkMode = () => {
         setIsDark(!isDark);
@@ -137,7 +147,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                         <SidebarGroupLabel>Menu</SidebarGroupLabel>
                         <SidebarGroupContent>
                             <SidebarMenu>
-                                {menuItems.map((item) => (
+                                {menuItems
+                                    .filter((item) => canAccessPath(user?.roleName, item.url))
+                                    .map((item) => (
                                     <SidebarMenuItem key={item.title}>
                                         <SidebarMenuButton
                                             asChild
@@ -181,6 +193,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                             {menuItems.find((item) => item.url === pathname)?.title || "Dashboard"}
                         </h1>
                         <div className="flex items-center gap-2">
+                            {user?.roleName && (
+                                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary uppercase">
+                                    {user.roleName}
+                                </span>
+                            )}
                             <span className="text-sm text-muted-foreground">
                                 Xin chào, <span className="font-medium text-foreground">{user?.fullName || user?.username}</span>
                             </span>
