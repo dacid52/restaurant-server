@@ -1,6 +1,5 @@
 server:
   port: 3005
-  address: 127.0.0.1
 
 spring:
   application:
@@ -13,7 +12,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: false
+    show-sql: true
   mail:
     host: ${MAIL_HOST:smtp.mailtrap.io}
     port: ${MAIL_PORT:587}

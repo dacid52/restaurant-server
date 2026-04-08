@@ -1,6 +1,5 @@
 package com.restaurant.paymentservice.controller;
 
-import com.restaurant.paymentservice.service.MomoService;
 import com.restaurant.paymentservice.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +17,6 @@ import java.util.Map;
 public class PaymentController {
 
     private final PaymentService paymentService;
-    private final MomoService momoService;
 
     @GetMapping("/waiting")
     public ResponseEntity<List<Map<String, Object>>> getWaitingPayments() {
@@ -156,11 +154,6 @@ public class PaymentController {
     @PostMapping("/momo/ipn")
     public ResponseEntity<String> momoIpnCallback(@RequestBody Map<String, Object> payload) {
         log.info("📨 MoMo IPN callback: {}", payload);
-        // Xác thực chữ ký HMAC-SHA256 — từ chối nếu bị giả mạo
-        if (!momoService.verifyIpnSignature(payload)) {
-            log.warn("⚠️ MoMo IPN signature mismatch — request bị từ chối");
-            return ResponseEntity.badRequest().body("Invalid signature");
-        }
         try {
             int resultCode = ((Number) payload.getOrDefault("resultCode", -1)).intValue();
             if (resultCode == 0) {

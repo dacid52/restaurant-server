@@ -42,15 +42,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Endpoint công khai: khách gửi yêu cầu thanh toán + MoMo flow
-        // Dùng exact match thay vì path.contains để tránh bypass ngoài ý muốn
-        boolean isPublicPaymentEndpoint =
-                (path.equals("/api/payments/request")           && "POST".equals(request.getMethod()))
-             || (path.equals("/api/payments/momo/create")       && "POST".equals(request.getMethod()))
-             || (path.equals("/api/payments/momo/ipn")          && "POST".equals(request.getMethod()))
-             || (path.equals("/api/payments/momo/notify-cashier") && "POST".equals(request.getMethod()));
-
-        if (isPublicPaymentEndpoint) {
+        if (path.contains("/request") || path.contains("/momo/")) {
             filterChain.doFilter(request, response);
             return;
         }

@@ -10,7 +10,6 @@ import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -105,39 +104,6 @@ public class MomoService {
     }
 
     // ---------------------------------------------------------------
-
-    /**
-     * Xác thực chữ ký HMAC-SHA256 MoMo IPN theo chuẩn v2.
-     * Trả về true nếu hợp lệ, false nếu bị giả mạo.
-     */
-    public boolean verifyIpnSignature(Map<String, Object> payload) {
-        try {
-            String rawHash = "accessKey="   + accessKey
-                    + "&amount="            + payload.getOrDefault("amount", "")
-                    + "&extraData="         + payload.getOrDefault("extraData", "")
-                    + "&message="           + payload.getOrDefault("message", "")
-                    + "&orderId="           + payload.getOrDefault("orderId", "")
-                    + "&orderInfo="         + payload.getOrDefault("orderInfo", "")
-                    + "&orderType="         + payload.getOrDefault("orderType", "")
-                    + "&partnerCode="       + payload.getOrDefault("partnerCode", "")
-                    + "&payType="           + payload.getOrDefault("payType", "")
-                    + "&requestId="         + payload.getOrDefault("requestId", "")
-                    + "&responseTime="      + payload.getOrDefault("responseTime", "")
-                    + "&resultCode="        + payload.getOrDefault("resultCode", "")
-                    + "&transId="           + payload.getOrDefault("transId", "");
-
-            String expected = hmacSha256(rawHash, secretKey);
-            String actual = String.valueOf(payload.getOrDefault("signature", ""));
-            // Dùng constant-time comparison để tránh timing attack
-            return MessageDigest.isEqual(
-                    expected.getBytes(StandardCharsets.UTF_8),
-                    actual.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            log.error("❌ MoMo IPN signature verification error: {}", e.getMessage());
-            return false;
-        }
-    }
-
     private String hmacSha256(String data, String key) throws Exception {
         Mac mac = Mac.getInstance("HmacSHA256");
         mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
