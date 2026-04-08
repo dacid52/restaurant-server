@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Apr 01, 2026 at 05:10 PM
+-- Generation Time: Apr 08, 2026 at 04:10 PM
 -- Server version: 8.4.3
 -- PHP Version: 8.3.30
 
@@ -23,43 +23,30 @@ SET time_zone = "+00:00";
 CREATE DATABASE IF NOT EXISTS `inventorydb` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `inventorydb`;
 
--- --------------------------------------------------------
-
---
--- Table structure for table `ingredients`
---
-
-CREATE TABLE `ingredients` (
-  `id` int NOT NULL,
-  `name` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `unit` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `quantity` decimal(10,2) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 --
 -- Dumping data for table `ingredients`
 --
 
 INSERT INTO `ingredients` (`id`, `name`, `unit`, `quantity`) VALUES
-(1, 'Thịt bò', 'kg', 9.50),
+(1, 'Thịt bò', 'kg', 109.50),
 (2, 'Bánh phở', 'kg', 99.00),
-(3, 'Gà', 'kg', 8.00),
-(4, 'Cơm trắng', 'kg', 6.00),
+(3, 'Gà', 'kg', 108.00),
+(4, 'Cơm trắng', 'kg', 106.00),
 (5, 'Trà túi lọc', 'gói', 30.00),
-(6, 'Đào hộp', 'kg', 4.00),
-(7, 'Kem', 'tấn', 3.00),
+(6, 'Đào hộp', 'kg', 104.00),
+(7, 'Kem', 'tấn', 103.00),
 (8, 'Vani', 'lít', 2000.00),
-(10, 'Gạo', 'hạt', 1.00),
+(10, 'Gạo', 'hạt', 101.00),
 (11, 'Tỏi', 'g', 88.09),
 (12, 'Ớt', 'g', 37.56),
 (13, 'Gừng', 'củ', 60.73),
 (14, 'Sả', 'tép', 14.02),
-(15, 'Hành tím', 'kg', 6.26),
+(15, 'Hành tím', 'kg', 106.26),
 (16, 'Chanh', 'quả', 64.71),
 (17, 'Rau thơm', 'g', 15.28),
 (18, 'Ngò', 'g', 10.53),
 (19, 'Tiêu', 'g', 40.44),
-(20, 'Đường', 'g', 86.98),
+(20, 'Đường', 'g', 36.98),
 (21, 'Muối', 'g', 41.02),
 (22, 'Bột ngọt', 'g', 34.42),
 (23, 'Dầu ăn', 'l', 10.38),
@@ -70,34 +57,34 @@ INSERT INTO `ingredients` (`id`, `name`, `unit`, `quantity`) VALUES
 (28, 'Kem', 'g', 89.11),
 (29, 'Sữa tươi', 'ml', 42.53),
 (30, 'Sữa đặc', 'ml', 97.60),
-(31, 'Thịt bò', 'kg', 4.36),
-(32, 'Thịt gà', 'kg', 1.87),
-(33, 'Thịt heo', 'kg', 2.40),
-(34, 'Cá hồi', 'kg', 5.61),
+(31, 'Thịt bò', 'kg', 104.36),
+(32, 'Thịt gà', 'kg', 101.87),
+(33, 'Thịt heo', 'kg', 102.40),
+(34, 'Cá hồi', 'kg', 105.61),
 (35, 'Tôm', 'g', 17.26),
-(36, 'Mực', 'kg', 2.97),
+(36, 'Mực', 'kg', 101.97),
 (37, 'Nấm rơm', 'g', 12.81),
 (38, 'Nấm hương', 'g', 91.74),
 (39, 'Trứng gà', 'quả', 22.90),
 (40, 'Trứng vịt', 'quả', 19.17),
-(41, 'Đậu phụ', 'kg', 3.76),
+(41, 'Đậu phụ', 'kg', 103.76),
 (42, 'Rau muống', 'g', 13.96),
 (43, 'Cải ngọt', 'g', 86.49),
 (44, 'Cải xanh', 'g', 23.02),
 (45, 'Bông cải', 'g', 70.74),
 (46, 'Khoai tây', 'g', 55.57),
-(47, 'Khoai lang', 'g', 7.85),
+(47, 'Khoai lang', 'g', 107.85),
 (48, 'Cà rốt', 'g', 78.01),
-(49, 'Su hào', 'g', 3.47),
+(49, 'Su hào', 'g', 103.47),
 (50, 'Dưa leo', 'quả', 11.84),
-(51, 'Cà chua', 'quả', 28.93),
-(52, 'Xoài', 'quả', 9.12),
-(53, 'Chuối', 'quả', 6.38),
+(51, 'Cà chua', 'quả', 23.93),
+(52, 'Xoài', 'quả', 109.12),
+(53, 'Chuối', 'quả', 106.38),
 (54, 'Dứa', 'quả', 18.48),
 (55, 'Nho', 'g', 47.89),
 (56, 'Dưa hấu', 'g', 93.04),
 (57, 'Táo', 'quả', 16.15),
-(58, 'Lê', 'quả', 18.70),
+(58, 'Lê', 'quả', 108.70),
 (59, 'Vải', 'g', 37.36),
 (60, 'Mít', 'g', 45.13),
 (61, 'Sầu riêng', 'g', 51.02),
@@ -113,13 +100,13 @@ INSERT INTO `ingredients` (`id`, `name`, `unit`, `quantity`) VALUES
 (71, 'Mì sợi', 'g', 39.12),
 (72, 'Phở khô', 'g', 82.34),
 (73, 'Bún tươi', 'g', 75.48),
-(74, 'Rau răm', 'g', 9.24),
-(75, 'Húng quế', 'g', 5.63),
-(76, 'Tía tô', 'g', 6.17),
-(77, 'Rau má', 'g', 4.71),
-(78, 'Hành lá', 'g', 7.38),
+(74, 'Rau răm', 'g', 109.24),
+(75, 'Húng quế', 'g', 105.63),
+(76, 'Tía tô', 'g', 106.17),
+(77, 'Rau má', 'g', 104.71),
+(78, 'Hành lá', 'g', 107.38),
 (79, 'Ớt chuông', 'quả', 13.44),
-(80, 'Ớt hiểm', 'quả', 8.93),
+(80, 'Ớt hiểm', 'quả', 108.93),
 (81, 'Ớt xanh', 'quả', 11.26),
 (82, 'Măng', 'g', 14.86),
 (83, 'Dừa nạo', 'g', 20.19),
@@ -128,7 +115,7 @@ INSERT INTO `ingredients` (`id`, `name`, `unit`, `quantity`) VALUES
 (86, 'Bí đỏ', 'g', 19.41),
 (87, 'Bí xanh', 'g', 17.35),
 (88, 'Mướp', 'g', 12.95),
-(89, 'Cà pháo', 'quả', 8.22),
+(89, 'Cà pháo', 'quả', 108.22),
 (90, 'Chả cá', 'g', 48.61),
 (91, 'Giò sống', 'g', 55.70),
 (92, 'Thịt xay', 'g', 33.89),
@@ -137,8 +124,8 @@ INSERT INTO `ingredients` (`id`, `name`, `unit`, `quantity`) VALUES
 (95, 'Nấm kim châm', 'g', 10.78),
 (96, 'Nấm mối', 'g', 16.53),
 (97, 'Nấm linh chi', 'g', 21.74),
-(98, 'Rong biển', 'g', 5.29),
-(99, 'Trà xanh', 'g', 9.66),
+(98, 'Rong biển', 'g', 105.29),
+(99, 'Trà xanh', 'g', 109.66),
 (100, 'Trà ô long', 'g', 11.23),
 (101, 'Cà phê', 'g', 18.45),
 (102, 'Ca cao', 'g', 22.08),
@@ -168,101 +155,16 @@ INSERT INTO `ingredients` (`id`, `name`, `unit`, `quantity`) VALUES
 (126, 'Lá lốt nghiền', 'củ', 33.68),
 (127, 'Lòng đỏ trứng khô', 'tép', 45.82),
 (128, 'Muối tôm xắt nhỏ', 'thìa', 72.66);
-
---
--- Indexes for dumped tables
---
-
---
--- Indexes for table `ingredients`
---
-ALTER TABLE `ingredients`
-  ADD PRIMARY KEY (`id`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `ingredients`
---
-ALTER TABLE `ingredients`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=129;
 --
 -- Database: `kitchendb`
 --
 CREATE DATABASE IF NOT EXISTS `kitchendb` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `kitchendb`;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `kitchen_queue`
---
-
-CREATE TABLE `kitchen_queue` (
-  `id` int NOT NULL,
-  `order_detail_id` int DEFAULT NULL,
-  `status` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `updated_at` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `kitchen_queue`
---
-
-INSERT INTO `kitchen_queue` (`id`, `order_detail_id`, `status`, `updated_at`) VALUES
-(7, 158, 'Hoàn thành', '2026-04-02 00:06:55');
-
---
--- Indexes for dumped tables
---
-
---
--- Indexes for table `kitchen_queue`
---
-ALTER TABLE `kitchen_queue`
-  ADD PRIMARY KEY (`id`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `kitchen_queue`
---
-ALTER TABLE `kitchen_queue`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 --
 -- Database: `menudb`
 --
 CREATE DATABASE IF NOT EXISTS `menudb` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `menudb`;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `buffet_packages`
---
-
-CREATE TABLE `buffet_packages` (
-  `id` int NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `price` decimal(18,2) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `categories`
---
-
-CREATE TABLE `categories` (
-  `id` int NOT NULL,
-  `name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `is_drink` tinyint(1) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `categories`
@@ -279,20 +181,6 @@ INSERT INTO `categories` (`id`, `name`, `is_drink`) VALUES
 (8, 'Món Sống & Món Lạnh (Raw & Cold Dishes)', 0),
 (10, 'Món Chay Fine Dining (Vegetarian & Vegan Options)', 0),
 (12, 'Thực Đơn Đặc Biệt (Special Menus)', 0);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `foods`
---
-
-CREATE TABLE `foods` (
-  `id` int NOT NULL,
-  `name` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `price` decimal(10,2) DEFAULT NULL,
-  `image_url` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `category_id` int DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `foods`
@@ -381,19 +269,6 @@ INSERT INTO `foods` (`id`, `name`, `price`, `image_url`, `category_id`) VALUES
 (108, 'Thực đơn Đêm Giáng Sinh', 8750000.00, '/api/images/foods/80ef9987-91f8-4c25-9d98-13866799e4f2.png', 12),
 (109, 'Set Bắc – Trung – Nam', 9780000.00, '/api/images/foods/6fa49459-50fc-491f-89af-c6ba6796cbc5.webp', 12),
 (110, 'Set Chef’s Table', 6950000.00, '/api/images/foods/1e06d7a6-64e3-4faa-8d91-fd91faa41413.jpg', 12);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `food_ingredients`
---
-
-CREATE TABLE `food_ingredients` (
-  `id` int NOT NULL,
-  `food_id` int DEFAULT NULL,
-  `ingredient_id` int DEFAULT NULL,
-  `amount` decimal(10,2) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `food_ingredients`
@@ -585,100 +460,11 @@ INSERT INTO `food_ingredients` (`id`, `food_id`, `ingredient_id`, `amount`) VALU
 (191, 108, 20, 10.00),
 (192, 109, 20, 10.00),
 (193, 110, 20, 10.00);
-
---
--- Indexes for dumped tables
---
-
---
--- Indexes for table `buffet_packages`
---
-ALTER TABLE `buffet_packages`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `categories`
---
-ALTER TABLE `categories`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `foods`
---
-ALTER TABLE `foods`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `category_id` (`category_id`);
-
---
--- Indexes for table `food_ingredients`
---
-ALTER TABLE `food_ingredients`
-  ADD PRIMARY KEY (`id`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `buffet_packages`
---
-ALTER TABLE `buffet_packages`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `categories`
---
-ALTER TABLE `categories`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
-
---
--- AUTO_INCREMENT for table `foods`
---
-ALTER TABLE `foods`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=111;
-
---
--- AUTO_INCREMENT for table `food_ingredients`
---
-ALTER TABLE `food_ingredients`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=239;
-
---
--- Constraints for dumped tables
---
-
---
--- Constraints for table `foods`
---
-ALTER TABLE `foods`
-  ADD CONSTRAINT `foods_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`);
 --
 -- Database: `orderdb`
 --
 CREATE DATABASE IF NOT EXISTS `orderdb` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `orderdb`;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `orders`
---
-
-CREATE TABLE `orders` (
-  `id` int NOT NULL,
-  `table_id` int DEFAULT NULL,
-  `user_id` int DEFAULT NULL,
-  `order_time` datetime DEFAULT NULL,
-  `status` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `total` decimal(18,2) DEFAULT NULL,
-  `table_key` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `is_buffet` tinyint(1) DEFAULT NULL,
-  `buffet_session_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `buffet_package_id` int DEFAULT NULL,
-  `buffet_package_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `payment_status` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `updated_at` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `orders`
@@ -800,23 +586,13 @@ INSERT INTO `orders` (`id`, `table_id`, `user_id`, `order_time`, `status`, `tota
 (113, 2, NULL, '2026-03-31 22:46:39', 'Hoàn thành', 2148000.00, '2841ee0f-d2f3-43a8-bfeb-faadd787a805', 0, NULL, NULL, NULL, 'unpaid', '2026-03-31 22:47:42'),
 (114, 1, NULL, '2026-04-01 23:13:21', 'Hoàn thành', 199000.00, '138917ef-c3ca-49d6-a340-4a061c4819fc', 0, NULL, NULL, NULL, 'unpaid', '2026-04-01 23:13:53'),
 (115, 1, NULL, '2026-04-01 23:14:53', 'Hoàn thành', 199000.00, '138917ef-c3ca-49d6-a340-4a061c4819fc', 0, NULL, NULL, NULL, 'unpaid', '2026-04-01 23:15:11'),
-(116, 1, NULL, '2026-04-02 00:06:43', 'Hoàn thành', 199000.00, '0610f7f6-912c-4f54-a4b2-7057959e78a8', 0, NULL, NULL, NULL, 'paid', '2026-04-02 00:07:06');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `order_details`
---
-
-CREATE TABLE `order_details` (
-  `id` int NOT NULL,
-  `order_id` int DEFAULT NULL,
-  `food_id` int DEFAULT NULL,
-  `quantity` int DEFAULT NULL,
-  `price` decimal(10,2) DEFAULT NULL,
-  `custom_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `is_free_drink` tinyint(1) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+(116, 1, NULL, '2026-04-02 00:06:43', 'Hoàn thành', 199000.00, '0610f7f6-912c-4f54-a4b2-7057959e78a8', 0, NULL, NULL, NULL, 'paid', '2026-04-02 00:07:06'),
+(117, 1, NULL, '2026-04-02 08:15:32', 'Hoàn thành', 199000.00, '62540839-dc55-44b1-ae39-73b824df9e01', 0, NULL, NULL, NULL, 'unpaid', '2026-04-02 08:16:17'),
+(118, 1, NULL, '2026-04-02 08:15:33', 'Chờ xác nhận', 199000.00, '62540839-dc55-44b1-ae39-73b824df9e01', 0, NULL, NULL, NULL, 'unpaid', '2026-04-02 08:15:33'),
+(119, 1, NULL, '2026-04-07 00:21:28', 'Hoàn thành', 199000.00, '34eda75b-8580-4936-97af-8b00313b56db', 0, NULL, NULL, NULL, 'paid', '2026-04-07 00:22:30'),
+(120, 1, NULL, '2026-04-07 12:38:37', 'Hoàn thành', 697000.00, '1dfe7bb5-f52e-4c78-ba95-f55b466d00fd', 0, NULL, NULL, NULL, 'paid', '2026-04-07 12:39:25'),
+(121, 2, NULL, '2026-04-07 12:59:45', 'Hoàn thành', 199000.00, '7b3a9462-c663-4f57-9f61-b1dbff8e6744', 0, NULL, NULL, NULL, 'paid', '2026-04-07 13:00:52'),
+(122, 2, NULL, '2026-04-07 12:59:59', 'Hoàn thành', 598000.00, '7b3a9462-c663-4f57-9f61-b1dbff8e6744', 0, NULL, NULL, NULL, 'paid', '2026-04-07 13:00:52');
 
 --
 -- Dumping data for table `order_details`
@@ -976,72 +752,19 @@ INSERT INTO `order_details` (`id`, `order_id`, `food_id`, `quantity`, `price`, `
 (155, 113, 14, 1, 1300000.00, NULL, NULL),
 (156, 114, 1, 1, 199000.00, NULL, NULL),
 (157, 115, 1, 1, 199000.00, NULL, NULL),
-(158, 116, 1, 1, 199000.00, NULL, NULL);
-
---
--- Indexes for dumped tables
---
-
---
--- Indexes for table `orders`
---
-ALTER TABLE `orders`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `order_details`
---
-ALTER TABLE `order_details`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `order_id` (`order_id`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `orders`
---
-ALTER TABLE `orders`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=117;
-
---
--- AUTO_INCREMENT for table `order_details`
---
-ALTER TABLE `order_details`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=159;
-
---
--- Constraints for dumped tables
---
-
---
--- Constraints for table `order_details`
---
-ALTER TABLE `order_details`
-  ADD CONSTRAINT `order_details_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`id`);
+(158, 116, 1, 1, 199000.00, NULL, NULL),
+(159, 117, 1, 1, 199000.00, NULL, NULL),
+(160, 118, 1, 1, 199000.00, NULL, NULL),
+(161, 119, 1, 1, 199000.00, NULL, NULL),
+(162, 120, 1, 2, 199000.00, NULL, NULL),
+(163, 120, 2, 1, 299000.00, NULL, NULL),
+(164, 121, 1, 1, 199000.00, NULL, NULL),
+(165, 122, 2, 2, 299000.00, NULL, NULL);
 --
 -- Database: `paymentdb`
 --
 CREATE DATABASE IF NOT EXISTS `paymentdb` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `paymentdb`;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `payments`
---
-
-CREATE TABLE `payments` (
-  `id` int NOT NULL,
-  `order_id` int NOT NULL,
-  `amount` decimal(18,2) NOT NULL,
-  `method` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `cash_received` decimal(18,2) DEFAULT NULL,
-  `cash_change` decimal(18,2) DEFAULT NULL,
-  `created_at` datetime DEFAULT NULL,
-  `paid_at` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `payments`
@@ -1073,22 +796,11 @@ INSERT INTO `payments` (`id`, `order_id`, `amount`, `method`, `cash_received`, `
 (23, 109, 350000.00, 'cash', NULL, NULL, '2025-12-14 00:43:34', '2025-12-14 00:43:34'),
 (24, 111, 5673000.00, 'cash', NULL, NULL, '2025-12-14 07:23:07', '2025-12-14 07:23:07'),
 (29, 114, 199000.00, 'cash', NULL, NULL, NULL, '2026-04-02 00:02:00'),
-(30, 116, 199000.00, 'cash', NULL, NULL, NULL, '2026-04-02 00:07:06');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `payment_requests`
---
-
-CREATE TABLE `payment_requests` (
-  `id` int NOT NULL,
-  `order_id` int NOT NULL,
-  `table_id` int NOT NULL,
-  `total` decimal(18,2) NOT NULL,
-  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `request_time` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+(30, 116, 199000.00, 'cash', NULL, NULL, NULL, '2026-04-02 00:07:06'),
+(31, 119, 199000.00, 'cash', NULL, NULL, NULL, '2026-04-07 00:22:30'),
+(32, 120, 697000.00, 'cash', NULL, NULL, NULL, '2026-04-07 12:39:25'),
+(33, 121, 199000.00, 'cash', NULL, NULL, NULL, '2026-04-07 13:00:52'),
+(34, 122, 598000.00, 'cash', NULL, NULL, NULL, '2026-04-07 13:00:52');
 
 --
 -- Dumping data for table `payment_requests`
@@ -1119,55 +831,16 @@ INSERT INTO `payment_requests` (`id`, `order_id`, `table_id`, `total`, `status`,
 (28, 109, 1, 350000.00, 'paid', '2025-12-14 00:43:29'),
 (29, 111, 1, 5673000.00, 'paid', '2025-12-14 07:22:51'),
 (30, 114, 1, 199000.00, 'paid', '2026-04-01 23:51:53'),
-(31, 116, 1, 199000.00, 'paid', '2026-04-02 00:07:02');
-
---
--- Indexes for dumped tables
---
-
---
--- Indexes for table `payments`
---
-ALTER TABLE `payments`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `payment_requests`
---
-ALTER TABLE `payment_requests`
-  ADD PRIMARY KEY (`id`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `payments`
---
-ALTER TABLE `payments`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
-
---
--- AUTO_INCREMENT for table `payment_requests`
---
-ALTER TABLE `payment_requests`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
+(31, 116, 1, 199000.00, 'paid', '2026-04-02 00:07:02'),
+(32, 119, 1, 199000.00, 'paid', '2026-04-07 00:22:24'),
+(33, 120, 1, 697000.00, 'paid', '2026-04-07 12:39:17'),
+(34, 121, 2, 199000.00, 'paid', '2026-04-07 13:00:43'),
+(35, 122, 2, 598000.00, 'paid', '2026-04-07 13:00:43');
 --
 -- Database: `tabledb`
 --
 CREATE DATABASE IF NOT EXISTS `tabledb` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `tabledb`;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `restaurant_layouts`
---
-
-CREATE TABLE `restaurant_layouts` (
-  `id` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `layout_data` longtext COLLATE utf8mb4_unicode_ci
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `restaurant_layouts`
@@ -1176,53 +849,23 @@ CREATE TABLE `restaurant_layouts` (
 INSERT INTO `restaurant_layouts` (`id`, `layout_data`) VALUES
 ('main', '`{\"id\":\"floor-1\",\"name\":\"Tầng 1 (Trệt)\",\"objects\":[`}]');
 
--- --------------------------------------------------------
-
---
--- Table structure for table `tables`
---
-
-CREATE TABLE `tables` (
-  `id` int NOT NULL,
-  `name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `is_buffet` tinyint(1) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 --
 -- Dumping data for table `tables`
 --
 
-INSERT INTO `tables` (`id`, `name`, `status`, `is_buffet`) VALUES
-(1, 'Bàn 1', 'Trống', 0),
-(2, 'Bàn 2', 'Trống', 0),
-(3, 'Bàn 3', 'Trống', 0),
-(4, 'Bàn 4', 'Trống', 0),
-(5, 'Bàn 5', 'Trống', 0),
-(6, 'Bàn 6', 'Trống', 0),
-(7, 'Bàn 7', 'Trống', 0),
-(8, 'Bàn 8', 'Trống', 0),
-(9, 'Bàn 9', 'Trống', 0),
-(18, 'Bàn 10', 'Trống', 0),
-(19, 'Bàn 11', 'Trống', 0),
-(20, 'Bàn 12', 'Trống', 0),
-(22, '13', 'available', 0);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `table_keys`
---
-
-CREATE TABLE `table_keys` (
-  `id` int NOT NULL,
-  `table_id` int DEFAULT NULL,
-  `key_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` datetime DEFAULT NULL,
-  `expires_at` datetime DEFAULT NULL,
-  `is_valid` tinyint(1) DEFAULT NULL,
-  `device_session` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO `tables` (`id`, `name`, `status`, `is_buffet`, `capacity`) VALUES
+(1, 'Bàn 1', 'Trống', 0, 2),
+(2, 'Bàn 2', 'Trống', 0, 2),
+(3, 'Bàn 3', 'Trống', 0, 2),
+(4, 'Bàn 4', 'Trống', 0, 2),
+(5, 'Bàn 5', 'Trống', 0, 5),
+(6, 'Bàn 6', 'Trống', 0, 3),
+(7, 'Bàn 7', 'Trống', 0, 3),
+(8, 'Bàn 8', 'Trống', 0, 4),
+(9, 'Bàn 9', 'Trống', 0, 4),
+(18, 'Bàn 10', 'Trống', 0, 4),
+(19, 'Bàn 11', 'Trống', 0, 3),
+(20, 'Bàn 12', 'Trống', 0, 6);
 
 --
 -- Dumping data for table `table_keys`
@@ -1372,7 +1015,6 @@ INSERT INTO `table_keys` (`id`, `table_id`, `key_value`, `created_at`, `expires_
 (141, 1, '6100f8a9-c956-46fc-baa0-f835ed1c1c78', '2025-12-14 07:20:38', '2025-12-14 09:20:38', 0, NULL),
 (142, 1, '797c321d-db37-4aab-9485-5c8e2b168acd', '2026-03-24 03:28:46', '2026-03-24 05:28:46', 0, NULL),
 (143, 1, '9fb08036-ed71-457d-857b-6baa1890429d', '2026-03-24 03:28:49', '2026-03-24 05:28:49', 0, NULL),
-(144, 22, 'c0a839fe-a94a-464e-805d-15194e414677', '2026-03-24 08:26:14', '2026-03-24 10:26:14', 0, NULL),
 (145, 1, '77f99e6a-943f-4ae0-a353-55118a76ea21', '2026-03-24 08:45:41', '2026-03-24 10:45:41', 0, NULL),
 (146, 1, '06a2fb7a-a777-4296-b294-dabf7d4b2f20', '2026-03-24 08:48:28', '2026-03-24 10:48:28', 0, NULL),
 (147, 2, 'a9a1fd3e-eefb-4e39-8d69-f787800b0205', '2026-03-24 08:49:19', '2026-03-24 10:49:19', 0, NULL),
@@ -1389,67 +1031,50 @@ INSERT INTO `table_keys` (`id`, `table_id`, `key_value`, `created_at`, `expires_
 (1156, 2, 'daae05a4-75f2-4661-ad8b-cf04763e49cb', '2026-03-31 23:24:54', '2026-04-01 01:24:54', 0, 'dev_30l96hl41774439156106'),
 (1157, 1, '12e98f0d-9347-4606-982c-7cde0741cd46', '2026-04-01 16:01:57', '2026-04-01 18:01:57', 0, 'dev_30l96hl41774439156106'),
 (1158, 1, 'f7367d9c-98f6-4334-986a-2f133bc5261a', '2026-04-01 22:32:26', '2026-04-02 00:32:26', 0, NULL),
-(1159, 2, 'a70864f1-864e-42c9-8615-21657b2d3744', '2026-04-01 22:33:04', '2026-04-02 00:33:04', 1, NULL),
+(1159, 2, 'a70864f1-864e-42c9-8615-21657b2d3744', '2026-04-01 22:33:04', '2026-04-02 00:33:04', 0, NULL),
 (1160, 1, '7b5c8a05-53de-4c0a-8bcc-b66ed8bc48aa', '2026-04-01 23:04:53', '2026-04-02 01:04:53', 0, NULL),
 (1161, 1, '138917ef-c3ca-49d6-a340-4a061c4819fc', '2026-04-01 23:11:47', '2026-04-02 01:11:47', 0, NULL),
 (1162, 1, '2f5c13dd-54a7-4084-b40d-1f2c510b42ca', '2026-04-02 00:02:41', '2026-04-02 02:02:41', 0, NULL),
-(1163, 1, '0610f7f6-912c-4f54-a4b2-7057959e78a8', '2026-04-02 00:06:27', '2026-04-02 02:06:27', 0, NULL);
+(1163, 1, '0610f7f6-912c-4f54-a4b2-7057959e78a8', '2026-04-02 00:06:27', '2026-04-02 02:06:27', 0, NULL),
+(1164, 1, '62540839-dc55-44b1-ae39-73b824df9e01', '2026-04-02 08:13:19', '2026-04-02 10:13:19', 0, '1775092460125-sm7zsjky9n'),
+(1165, 1, '045efc10-0e7a-424a-8c3b-53d6153caa0b', '2026-04-06 20:02:35', '2026-04-06 22:02:35', 0, NULL),
+(1166, 1, '86d5af0d-0bae-435d-93bc-2b2df3f8dfd0', '2026-04-06 23:42:00', '2026-04-07 01:42:00', 0, NULL),
+(1167, 1, '36aa55a1-d512-494d-a3ba-b6b287a45f0f', '2026-04-06 23:45:51', '2026-04-07 01:45:51', 0, NULL),
+(1168, 1, '356c280a-2db7-4c26-88bf-3900ada72f3a', '2026-04-06 23:50:33', '2026-04-07 01:50:33', 0, '1775493732454-3j5oe29p0k'),
+(1169, 2, 'e97d0b40-740a-4c2d-b9f1-adb40a6da2ae', '2026-04-06 23:51:23', '2026-04-07 01:51:23', 0, '1775493732454-3j5oe29p0k'),
+(1170, 1, '34eda75b-8580-4936-97af-8b00313b56db', '2026-04-07 00:01:33', '2026-04-07 02:01:33', 0, '1775493732454-3j5oe29p0k'),
+(1171, 1, 'c78137a4-f4de-4006-9036-0330e86f160a', '2026-04-07 00:38:03', '2026-04-07 02:38:03', 0, NULL),
+(1172, 1, '87db3e99-257b-4b82-891f-62ddb5dc6f60', '2026-04-07 00:42:40', '2026-04-07 02:42:40', 0, '1775493732454-3j5oe29p0k'),
+(1173, 2, '08f246dd-28cf-48e1-8874-2437d4d5dcbd', '2026-04-07 00:53:23', '2026-04-07 02:53:23', 0, '1775493732454-3j5oe29p0k'),
+(1174, 1, '2a852fe5-bef4-4269-ad17-8ea3e79724ad', '2026-04-07 12:11:27', '2026-04-07 14:11:27', 0, NULL),
+(1175, 1, '1dfe7bb5-f52e-4c78-ba95-f55b466d00fd', '2026-04-07 12:37:54', '2026-04-07 14:37:54', 0, '1775540285297-xjiomzqq0b'),
+(1176, 1, '95208357-d541-4185-b116-1bf900044002', '2026-04-07 12:54:52', '2026-04-07 14:54:52', 0, '1775541295180-fdh8fcm0zg'),
+(1177, 2, '7b3a9462-c663-4f57-9f61-b1dbff8e6744', '2026-04-07 12:58:27', '2026-04-07 14:58:27', 0, '1775541531753-rma4e33f2x');
 
 --
--- Indexes for dumped tables
+-- Dumping data for table `table_reservations`
 --
 
---
--- Indexes for table `restaurant_layouts`
---
-ALTER TABLE `restaurant_layouts`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `tables`
---
-ALTER TABLE `tables`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `table_keys`
---
-ALTER TABLE `table_keys`
-  ADD PRIMARY KEY (`id`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `tables`
---
-ALTER TABLE `tables`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
-
---
--- AUTO_INCREMENT for table `table_keys`
---
-ALTER TABLE `table_keys`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1164;
+INSERT INTO `table_reservations` (`id`, `buffet_package_id`, `buffet_package_name`, `created_at`, `customer_id`, `customer_name`, `customer_phone`, `end_time`, `is_buffet`, `notes`, `party_size`, `start_time`, `status`, `table_id`, `updated_at`) VALUES
+(1, NULL, NULL, '2026-04-06 22:03:34.988639', NULL, 'Kerala Ranchi', '0792967872', '2026-04-07 07:03:00.000000', b'0', NULL, 2, '2026-04-07 05:03:00.000000', 'no_show', 3, '2026-04-07 00:36:43.148419'),
+(2, NULL, NULL, '2026-04-07 00:37:19.234419', 117, 'Kerala Ranchi', '0792967872', '2026-04-07 02:37:00.000000', b'0', NULL, 2, '2026-04-07 00:37:00.000000', 'completed', 1, '2026-04-07 00:40:59.098602'),
+(3, NULL, NULL, '2026-04-07 00:42:29.859294', 117, 'Kerala Ranchi', '0792967872', '2026-04-08 08:42:00.000000', b'0', NULL, 2, '2026-04-08 06:42:00.000000', 'completed', 1, '2026-04-07 00:45:29.418264'),
+(4, NULL, NULL, '2026-04-07 00:51:56.400642', 117, 'Kerala Ranchi', '0792967872', '2026-04-09 22:51:00.000000', b'0', NULL, 2, '2026-04-09 20:51:00.000000', 'completed', 2, '2026-04-07 00:53:37.605352');
 --
 -- Database: `userdb`
 --
 CREATE DATABASE IF NOT EXISTS `userdb` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `userdb`;
 
--- --------------------------------------------------------
-
 --
--- Table structure for table `logs`
+-- Dumping data for table `email_verification_otp_logs`
 --
 
-CREATE TABLE `logs` (
-  `id` int NOT NULL,
-  `user_id` int DEFAULT NULL,
-  `action` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT INTO `email_verification_otp_logs` (`id`, `attempt_count`, `created_at`, `email`, `expires_at`, `last_attempt_at`, `otp_code`, `sent_at`, `status`, `updated_at`, `is_used`, `used_at`, `is_valid`, `user_id`) VALUES
+(3, 0, '2026-04-06 21:59:50.082113', 'huy911441@gmail.com', '2026-04-06 22:09:50.081112', '2026-04-06 22:00:05.231112', '471238', '2026-04-06 21:59:50.080113', 'VERIFIED', '2026-04-06 22:00:05.232115', b'1', '2026-04-06 22:00:05.231112', b'0', 117),
+(4, 0, '2026-04-07 12:37:00.254514', 'huy411441@gmail.com', '2026-04-07 12:47:00.253505', '2026-04-07 12:37:23.990526', '032327', '2026-04-07 12:37:00.253505', 'VERIFIED', '2026-04-07 12:37:23.993525', b'1', '2026-04-07 12:37:23.991525', b'0', 118),
+(5, 0, '2026-04-07 12:52:55.691368', 'lmjames997@gmail.com', '2026-04-07 13:02:55.691368', '2026-04-07 12:53:18.845052', '190075', '2026-04-07 12:52:55.691368', 'VERIFIED', '2026-04-07 12:53:18.846132', b'1', '2026-04-07 12:53:18.845052', b'0', 119),
+(6, 0, '2026-04-07 12:57:20.089241', 'huy811441@gmail.com', '2026-04-07 13:07:20.088347', '2026-04-07 12:57:39.019909', '419473', '2026-04-07 12:57:20.088347', 'VERIFIED', '2026-04-07 12:57:39.021919', b'1', '2026-04-07 12:57:39.020916', b'0', 120);
 
 --
 -- Dumping data for table `logs`
@@ -1596,17 +1221,6 @@ INSERT INTO `logs` (`id`, `user_id`, `action`, `created_at`) VALUES
 (138, 11, 'Đăng nhập', '2026-03-19 11:34:32'),
 (139, 11, 'Đăng nhập', '2026-03-19 11:37:28');
 
--- --------------------------------------------------------
-
---
--- Table structure for table `roles`
---
-
-CREATE TABLE `roles` (
-  `id` int NOT NULL,
-  `name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 --
 -- Dumping data for table `roles`
 --
@@ -1616,193 +1230,124 @@ INSERT INTO `roles` (`id`, `name`) VALUES
 (2, 'manager'),
 (3, 'cashier'),
 (4, 'kitchen'),
-(5, 'guest');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `users`
---
-
-CREATE TABLE `users` (
-  `id` int NOT NULL,
-  `username` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `password` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `role_id` int DEFAULT NULL,
-  `full_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `phone_number` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `age` int DEFAULT NULL,
-  `email` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `address` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` datetime DEFAULT NULL,
-  `updated_at` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+(5, 'guest'),
+(6, 'CUSTOMER'),
+(7, 'STAFF');
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `username`, `password`, `role_id`, `full_name`, `phone_number`, `age`, `email`, `address`, `created_at`, `updated_at`) VALUES
-(1, 'guest', 'guest', 5, 'Khách', '0123456789', 25, 'guest@restaurant.com', '123 Đường Khách, Quận 1, TP.HCM', '2025-04-15 07:03:41', '2025-04-15 07:03:41'),
-(11, 'admin11', '$2b$10$pb0Aas7PNW8t34Z1bJPoS.C4yYET466X83tB2bVuUbJYQ2LiBHoau', 1, 'Dương Huy', '0792967973', 16, 'huy2114399@gmail.com', 'Copac Square', '2025-05-21 17:35:56', '2025-06-05 14:13:43'),
-(12, 'kitchen', '$2b$10$7RdqzJvmQ9lyXVygTwFEFuuHYhcneyoeAwOhb/PRoetf5K9LUuS..', 3, 'Dương Văn Huy', '0792967973', 18, 'huy2114379@gmail.com', 'abc', '2025-05-21 17:37:38', '2025-05-21 19:30:05'),
-(13, 'didi', '$2b$10$PGc0zGFG8Gx1nWNex.dbSuj20Se2cscTHZP1ZKUP7iUx2p58xflp6', 1, 'NguyenDat', '9445896547', 21, 'ndat50591@gmail.com', 'K8', '2025-06-02 16:15:52', '2025-06-02 16:15:52'),
-(14, 'KoiThe', '$2b$10$4kongPv4PQ.zhac8.Mauj.U3vkcrysFeHOUOGFXxpkT2pcHMREUui', 1, 'NguyenDat', '9445896547', 21, 'ndat50591@gmail.com', NULL, '2025-06-02 21:06:03', '2025-06-02 21:06:03'),
-(15, 'admin01', '$2b$10$RIRSP34Jr.0IZEShNgG4Ue2n65jb7qmpCgY2iA9PLlC0Z.FrMjBQm', 1, 'Nguyễn Văn Admin1', '0912340001', 45, 'admin1@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:31:06'),
-(16, 'admin02', '$2b$10$r9.cJIslv3f7BnIkYnR3TuZn1umLulzwICEZqi385lw5Z6YNU47dO', 1, 'Nguyễn Văn Admin2', '0912340002', 38, 'admin2@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:31:19'),
-(17, 'admin03', '$2a$10$Y8uUJC4URpNCn2646drr1u7AlyGaFnLRGnZd77KIZMz2PNk8b3PZu', 1, 'Nguyễn Văn Admin3', '0912340003', 29, 'admin3@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2026-03-26 03:47:07'),
-(18, 'admin04', '123456', 1, 'Nguyễn Văn Admin4', '0912340004', 22, 'admin4@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(19, 'admin05', '123456', 1, 'Nguyễn Văn Admin5', '0912340005', 42, 'admin5@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(20, 'admin06', '123456', 1, 'Nguyễn Văn Admin6', '0912340006', 41, 'admin6@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(21, 'admin07', '123456', 1, 'Nguyễn Văn Admin7', '0912340007', 49, 'admin7@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(22, 'admin08', '123456', 1, 'Nguyễn Văn Admin8', '0912340008', 38, 'admin8@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(23, 'admin09', '123456', 1, 'Nguyễn Văn Admin9', '0912340009', 21, 'admin9@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(24, 'admin10', '123456', 1, 'Nguyễn Văn Admin10', '0912340010', 34, 'admin10@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(25, 'chef01', '123456', 2, 'Trần Văn Bếp1', '0922340001', 29, 'chef1@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(26, 'chef02', '123456', 2, 'Trần Văn Bếp2', '0922340002', 40, 'chef2@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(27, 'chef03', '123456', 2, 'Trần Văn Bếp3', '0922340003', 33, 'chef3@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(28, 'chef04', '123456', 2, 'Trần Văn Bếp4', '0922340004', 31, 'chef4@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(29, 'chef05', '123456', 2, 'Trần Văn Bếp5', '0922340005', 40, 'chef5@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(30, 'chef06', '123456', 2, 'Trần Văn Bếp6', '0922340006', 49, 'chef6@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(31, 'chef07', '123456', 2, 'Trần Văn Bếp7', '0922340007', 41, 'chef7@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(32, 'chef08', '123456', 2, 'Trần Văn Bếp8', '0922340008', 27, 'chef8@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(33, 'chef09', '123456', 2, 'Trần Văn Bếp9', '0922340009', 20, 'chef9@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(34, 'chef10', '123456', 2, 'Trần Văn Bếp10', '0922340010', 27, 'chef10@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(35, 'chef11', '123456', 2, 'Trần Văn Bếp11', '0922340011', 44, 'chef11@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(36, 'chef12', '123456', 2, 'Trần Văn Bếp12', '0922340012', 42, 'chef12@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(37, 'chef13', '123456', 2, 'Trần Văn Bếp13', '0922340013', 40, 'chef13@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(38, 'chef14', '123456', 2, 'Trần Văn Bếp14', '0922340014', 30, 'chef14@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(39, 'chef15', '123456', 2, 'Trần Văn Bếp15', '0922340015', 25, 'chef15@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(40, 'chef16', '123456', 2, 'Trần Văn Bếp16', '0922340016', 37, 'chef16@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(41, 'chef17', '123456', 2, 'Trần Văn Bếp17', '0922340017', 38, 'chef17@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(42, 'chef18', '123456', 2, 'Trần Văn Bếp18', '0922340018', 23, 'chef18@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(43, 'chef19', '123456', 2, 'Trần Văn Bếp19', '0922340019', 45, 'chef19@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(44, 'chef20', '123456', 2, 'Trần Văn Bếp20', '0922340020', 43, 'chef20@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(45, 'chef21', '123456', 2, 'Trần Văn Bếp21', '0922340021', 50, 'chef21@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(46, 'chef22', '123456', 2, 'Trần Văn Bếp22', '0922340022', 50, 'chef22@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(47, 'chef23', '123456', 2, 'Trần Văn Bếp23', '0922340023', 42, 'chef23@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(48, 'chef24', '123456', 2, 'Trần Văn Bếp24', '0922340024', 40, 'chef24@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(49, 'chef25', '123456', 2, 'Trần Văn Bếp25', '0922340025', 28, 'chef25@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(50, 'chef26', '123456', 2, 'Trần Văn Bếp26', '0922340026', 26, 'chef26@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(51, 'chef27', '123456', 2, 'Trần Văn Bếp27', '0922340027', 20, 'chef27@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(52, 'chef28', '123456', 2, 'Trần Văn Bếp28', '0922340028', 24, 'chef28@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(53, 'chef29', '123456', 2, 'Trần Văn Bếp29', '0922340029', 38, 'chef29@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(54, 'chef30', '123456', 2, 'Trần Văn Bếp30', '0922340030', 20, 'chef30@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(55, 'employee01', '123456', 3, 'Lê Thị Nhân Viên1', '0932340001', 29, 'employee1@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(56, 'employee02', '123456', 3, 'Lê Thị Nhân Viên2', '0932340002', 25, 'employee2@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(57, 'employee03', '123456', 3, 'Lê Thị Nhân Viên3', '0932340003', 26, 'employee3@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(58, 'employee04', '123456', 3, 'Lê Thị Nhân Viên4', '0932340004', 22, 'employee4@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(59, 'employee05', '123456', 3, 'Lê Thị Nhân Viên5', '0932340005', 48, 'employee5@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(60, 'employee06', '123456', 3, 'Lê Thị Nhân Viên6', '0932340006', 36, 'employee6@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(61, 'employee07', '123456', 3, 'Lê Thị Nhân Viên7', '0932340007', 38, 'employee7@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(62, 'employee08', '123456', 3, 'Lê Thị Nhân Viên8', '0932340008', 45, 'employee8@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(63, 'employee09', '123456', 3, 'Lê Thị Nhân Viên9', '0932340009', 27, 'employee9@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(64, 'employee10', '123456', 3, 'Lê Thị Nhân Viên10', '0932340010', 43, 'employee10@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(65, 'employee11', '123456', 3, 'Lê Thị Nhân Viên11', '0932340011', 50, 'employee11@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(66, 'employee12', '123456', 3, 'Lê Thị Nhân Viên12', '0932340012', 32, 'employee12@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(67, 'employee13', '123456', 3, 'Lê Thị Nhân Viên13', '0932340013', 26, 'employee13@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(68, 'employee14', '123456', 3, 'Lê Thị Nhân Viên14', '0932340014', 34, 'employee14@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(69, 'employee15', '123456', 3, 'Lê Thị Nhân Viên15', '0932340015', 32, 'employee15@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(70, 'employee16', '123456', 3, 'Lê Thị Nhân Viên16', '0932340016', 25, 'employee16@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(71, 'employee17', '123456', 3, 'Lê Thị Nhân Viên17', '0932340017', 43, 'employee17@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(72, 'employee18', '123456', 3, 'Lê Thị Nhân Viên18', '0932340018', 36, 'employee18@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(73, 'employee19', '123456', 3, 'Lê Thị Nhân Viên19', '0932340019', 50, 'employee19@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(74, 'employee20', '123456', 3, 'Lê Thị Nhân Viên20', '0932340020', 44, 'employee20@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(75, 'employee21', '123456', 3, 'Lê Thị Nhân Viên21', '0932340021', 39, 'employee21@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(76, 'employee22', '123456', 3, 'Lê Thị Nhân Viên22', '0932340022', 34, 'employee22@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(77, 'employee23', '123456', 3, 'Lê Thị Nhân Viên23', '0932340023', 41, 'employee23@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(78, 'employee24', '123456', 3, 'Lê Thị Nhân Viên24', '0932340024', 50, 'employee24@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(79, 'employee25', '123456', 3, 'Lê Thị Nhân Viên25', '0932340025', 26, 'employee25@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(80, 'employee26', '123456', 3, 'Lê Thị Nhân Viên26', '0932340026', 50, 'employee26@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(81, 'employee27', '123456', 3, 'Lê Thị Nhân Viên27', '0932340027', 22, 'employee27@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(82, 'employee28', '123456', 3, 'Lê Thị Nhân Viên28', '0932340028', 29, 'employee28@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(83, 'employee29', '123456', 3, 'Lê Thị Nhân Viên29', '0932340029', 30, 'employee29@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(84, 'employee30', '123456', 3, 'Lê Thị Nhân Viên30', '0932340030', 38, 'employee30@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(85, 'employee31', '123456', 3, 'Lê Thị Nhân Viên31', '0932340031', 23, 'employee31@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(86, 'employee32', '123456', 3, 'Lê Thị Nhân Viên32', '0932340032', 33, 'employee32@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(87, 'employee33', '123456', 3, 'Lê Thị Nhân Viên33', '0932340033', 46, 'employee33@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(88, 'employee34', '123456', 3, 'Lê Thị Nhân Viên34', '0932340034', 44, 'employee34@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(89, 'employee35', '123456', 3, 'Lê Thị Nhân Viên35', '0932340035', 25, 'employee35@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(90, 'employee36', '123456', 3, 'Lê Thị Nhân Viên36', '0932340036', 25, 'employee36@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(91, 'employee37', '123456', 3, 'Lê Thị Nhân Viên37', '0932340037', 47, 'employee37@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(92, 'employee38', '123456', 3, 'Lê Thị Nhân Viên38', '0932340038', 32, 'employee38@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(93, 'employee39', '123456', 3, 'Lê Thị Nhân Viên39', '0932340039', 30, 'employee39@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(94, 'employee40', '123456', 3, 'Lê Thị Nhân Viên40', '0932340040', 30, 'employee40@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(95, 'employee41', '123456', 3, 'Lê Thị Nhân Viên41', '0932340041', 37, 'employee41@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(96, 'employee42', '123456', 3, 'Lê Thị Nhân Viên42', '0932340042', 46, 'employee42@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(97, 'employee43', '123456', 3, 'Lê Thị Nhân Viên43', '0932340043', 26, 'employee43@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(98, 'employee44', '123456', 3, 'Lê Thị Nhân Viên44', '0932340044', 45, 'employee44@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(99, 'employee45', '123456', 3, 'Lê Thị Nhân Viên45', '0932340045', 31, 'employee45@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(100, 'employee46', '123456', 3, 'Lê Thị Nhân Viên46', '0932340046', 31, 'employee46@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(101, 'employee47', '123456', 3, 'Lê Thị Nhân Viên47', '0932340047', 24, 'employee47@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(102, 'employee48', '123456', 3, 'Lê Thị Nhân Viên48', '0932340048', 22, 'employee48@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(103, 'employee49', '123456', 3, 'Lê Thị Nhân Viên49', '0932340049', 21, 'employee49@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(104, 'employee50', '123456', 3, 'Lê Thị Nhân Viên50', '0932340050', 33, 'employee50@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(105, 'employee51', '123456', 3, 'Lê Thị Nhân Viên51', '0932340051', 47, 'employee51@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(106, 'employee52', '123456', 3, 'Lê Thị Nhân Viên52', '0932340052', 24, 'employee52@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(107, 'employee53', '123456', 3, 'Lê Thị Nhân Viên53', '0932340053', 20, 'employee53@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(108, 'employee54', '123456', 3, 'Lê Thị Nhân Viên54', '0932340054', 45, 'employee54@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(109, 'employee55', '123456', 3, 'Lê Thị Nhân Viên55', '0932340055', 45, 'employee55@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(110, 'employee56', '123456', 3, 'Lê Thị Nhân Viên56', '0932340056', 48, 'employee56@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(111, 'employee57', '123456', 3, 'Lê Thị Nhân Viên57', '0932340057', 39, 'employee57@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(112, 'employee58', '123456', 3, 'Lê Thị Nhân Viên58', '0932340058', 41, 'employee58@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(113, 'employee59', '123456', 3, 'Lê Thị Nhân Viên59', '0932340059', 42, 'employee59@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38'),
-(114, 'employee60', '123456', 3, 'Lê Thị Nhân Viên60', '0932340060', 34, 'employee60@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38');
-
---
--- Indexes for dumped tables
---
-
---
--- Indexes for table `logs`
---
-ALTER TABLE `logs`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `roles`
---
-ALTER TABLE `roles`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `users`
---
-ALTER TABLE `users`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `role_id` (`role_id`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `logs`
---
-ALTER TABLE `logs`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=140;
-
---
--- AUTO_INCREMENT for table `roles`
---
-ALTER TABLE `roles`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
-
---
--- AUTO_INCREMENT for table `users`
---
-ALTER TABLE `users`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=115;
-
---
--- Constraints for dumped tables
---
-
---
--- Constraints for table `users`
---
-ALTER TABLE `users`
-  ADD CONSTRAINT `users_ibfk_1` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`);
+INSERT INTO `users` (`id`, `username`, `password`, `role_id`, `full_name`, `phone_number`, `age`, `email`, `address`, `created_at`, `updated_at`, `email_verification_expires_at`, `email_verification_token`, `email_verified`, `email_verification_otp`, `email_verification_otp_expires_at`, `email_verification_otp_attempt_count`, `email_verification_otp_email`, `email_verification_otp_last_attempt_at`, `email_verification_otp_sent_at`, `email_verification_otp_status`, `email_verification_otp_used`, `email_verification_otp_used_at`) VALUES
+(1, 'guest', 'guest', 5, 'Khách', '0123456789', 25, 'guest@restaurant.com', '123 Đường Khách, Quận 1, TP.HCM', '2025-04-15 07:03:41', '2025-04-15 07:03:41', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(11, 'admin11', '$2b$10$pb0Aas7PNW8t34Z1bJPoS.C4yYET466X83tB2bVuUbJYQ2LiBHoau', 1, 'Dương Huy', '0792967973', 16, 'huy2114399@gmail.com', 'Copac Square', '2025-05-21 17:35:56', '2025-06-05 14:13:43', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(12, 'kitchen', '$2b$10$7RdqzJvmQ9lyXVygTwFEFuuHYhcneyoeAwOhb/PRoetf5K9LUuS..', 3, 'Dương Văn Huy', '0792967973', 18, 'huy2114379@gmail.com', 'abc', '2025-05-21 17:37:38', '2025-05-21 19:30:05', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(13, 'didi', '$2b$10$PGc0zGFG8Gx1nWNex.dbSuj20Se2cscTHZP1ZKUP7iUx2p58xflp6', 1, 'NguyenDat', '9445896547', 21, 'ndat50591@gmail.com', 'K8', '2025-06-02 16:15:52', '2025-06-02 16:15:52', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(14, 'KoiThe', '$2a$10$Cpo.65CgLDWcK13g4anU2OhMr2.PIXBSr5Y.EPnoaMuUHZGeHpnsy', 3, 'NguyenDat', '9445896547', 21, 'ndat50591@gmail.com', NULL, '2025-06-02 21:06:03', '2026-04-07 12:07:45', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(15, 'admin01', '$2b$10$RIRSP34Jr.0IZEShNgG4Ue2n65jb7qmpCgY2iA9PLlC0Z.FrMjBQm', 1, 'Nguyễn Văn Admin1', '0912340001', 45, 'admin1@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:31:06', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(16, 'admin02', '$2b$10$r9.cJIslv3f7BnIkYnR3TuZn1umLulzwICEZqi385lw5Z6YNU47dO', 1, 'Nguyễn Văn Admin2', '0912340002', 38, 'admin2@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:31:19', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(17, 'admin03', '$2a$10$Y8uUJC4URpNCn2646drr1u7AlyGaFnLRGnZd77KIZMz2PNk8b3PZu', 1, 'Nguyễn Văn Admin3', '0912340003', 29, 'admin3@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2026-03-26 03:47:07', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(18, 'admin04', '123456', 1, 'Nguyễn Văn Admin4', '0912340004', 22, 'admin4@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(19, 'admin05', '123456', 1, 'Nguyễn Văn Admin5', '0912340005', 42, 'admin5@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(20, 'admin06', '123456', 1, 'Nguyễn Văn Admin6', '0912340006', 41, 'admin6@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(21, 'admin07', '123456', 1, 'Nguyễn Văn Admin7', '0912340007', 49, 'admin7@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(22, 'admin08', '123456', 1, 'Nguyễn Văn Admin8', '0912340008', 38, 'admin8@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(23, 'admin09', '123456', 1, 'Nguyễn Văn Admin9', '0912340009', 21, 'admin9@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(24, 'admin10', '123456', 1, 'Nguyễn Văn Admin10', '0912340010', 34, 'admin10@example.com', 'Hà Nội', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(25, 'chef01', '123456', 2, 'Trần Văn Bếp1', '0922340001', 29, 'chef1@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(26, 'chef02', '123456', 2, 'Trần Văn Bếp2', '0922340002', 40, 'chef2@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(27, 'chef03', '123456', 2, 'Trần Văn Bếp3', '0922340003', 33, 'chef3@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(28, 'chef04', '123456', 2, 'Trần Văn Bếp4', '0922340004', 31, 'chef4@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(29, 'chef05', '123456', 2, 'Trần Văn Bếp5', '0922340005', 40, 'chef5@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(30, 'chef06', '123456', 2, 'Trần Văn Bếp6', '0922340006', 49, 'chef6@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(31, 'chef07', '123456', 2, 'Trần Văn Bếp7', '0922340007', 41, 'chef7@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(32, 'chef08', '123456', 2, 'Trần Văn Bếp8', '0922340008', 27, 'chef8@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(33, 'chef09', '123456', 2, 'Trần Văn Bếp9', '0922340009', 20, 'chef9@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(34, 'chef10', '123456', 2, 'Trần Văn Bếp10', '0922340010', 27, 'chef10@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(35, 'chef11', '123456', 2, 'Trần Văn Bếp11', '0922340011', 44, 'chef11@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(36, 'chef12', '123456', 2, 'Trần Văn Bếp12', '0922340012', 42, 'chef12@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(37, 'chef13', '123456', 2, 'Trần Văn Bếp13', '0922340013', 40, 'chef13@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(38, 'chef14', '123456', 2, 'Trần Văn Bếp14', '0922340014', 30, 'chef14@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(39, 'chef15', '123456', 2, 'Trần Văn Bếp15', '0922340015', 25, 'chef15@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(40, 'chef16', '123456', 2, 'Trần Văn Bếp16', '0922340016', 37, 'chef16@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(41, 'chef17', '123456', 2, 'Trần Văn Bếp17', '0922340017', 38, 'chef17@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(42, 'chef18', '123456', 2, 'Trần Văn Bếp18', '0922340018', 23, 'chef18@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(43, 'chef19', '123456', 2, 'Trần Văn Bếp19', '0922340019', 45, 'chef19@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(44, 'chef20', '123456', 2, 'Trần Văn Bếp20', '0922340020', 43, 'chef20@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(45, 'chef21', '123456', 2, 'Trần Văn Bếp21', '0922340021', 50, 'chef21@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(46, 'chef22', '123456', 2, 'Trần Văn Bếp22', '0922340022', 50, 'chef22@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(47, 'chef23', '123456', 2, 'Trần Văn Bếp23', '0922340023', 42, 'chef23@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(48, 'chef24', '123456', 2, 'Trần Văn Bếp24', '0922340024', 40, 'chef24@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(49, 'chef25', '123456', 2, 'Trần Văn Bếp25', '0922340025', 28, 'chef25@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(50, 'chef26', '123456', 2, 'Trần Văn Bếp26', '0922340026', 26, 'chef26@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(51, 'chef27', '123456', 2, 'Trần Văn Bếp27', '0922340027', 20, 'chef27@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(52, 'chef28', '123456', 2, 'Trần Văn Bếp28', '0922340028', 24, 'chef28@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(53, 'chef29', '123456', 2, 'Trần Văn Bếp29', '0922340029', 38, 'chef29@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(54, 'chef30', '123456', 2, 'Trần Văn Bếp30', '0922340030', 20, 'chef30@example.com', 'TP Hồ Chí Minh', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(55, 'employee01', '123456', 3, 'Lê Thị Nhân Viên1', '0932340001', 29, 'employee1@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(56, 'employee02', '123456', 3, 'Lê Thị Nhân Viên2', '0932340002', 25, 'employee2@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(57, 'employee03', '123456', 3, 'Lê Thị Nhân Viên3', '0932340003', 26, 'employee3@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(58, 'employee04', '123456', 3, 'Lê Thị Nhân Viên4', '0932340004', 22, 'employee4@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(59, 'employee05', '123456', 3, 'Lê Thị Nhân Viên5', '0932340005', 48, 'employee5@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(60, 'employee06', '123456', 3, 'Lê Thị Nhân Viên6', '0932340006', 36, 'employee6@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(61, 'employee07', '123456', 3, 'Lê Thị Nhân Viên7', '0932340007', 38, 'employee7@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(62, 'employee08', '123456', 3, 'Lê Thị Nhân Viên8', '0932340008', 45, 'employee8@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(63, 'employee09', '123456', 3, 'Lê Thị Nhân Viên9', '0932340009', 27, 'employee9@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(64, 'employee10', '123456', 3, 'Lê Thị Nhân Viên10', '0932340010', 43, 'employee10@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(65, 'employee11', '123456', 3, 'Lê Thị Nhân Viên11', '0932340011', 50, 'employee11@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(66, 'employee12', '123456', 3, 'Lê Thị Nhân Viên12', '0932340012', 32, 'employee12@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(67, 'employee13', '123456', 3, 'Lê Thị Nhân Viên13', '0932340013', 26, 'employee13@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(68, 'employee14', '123456', 3, 'Lê Thị Nhân Viên14', '0932340014', 34, 'employee14@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(69, 'employee15', '123456', 3, 'Lê Thị Nhân Viên15', '0932340015', 32, 'employee15@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(70, 'employee16', '123456', 3, 'Lê Thị Nhân Viên16', '0932340016', 25, 'employee16@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(71, 'employee17', '123456', 3, 'Lê Thị Nhân Viên17', '0932340017', 43, 'employee17@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(72, 'employee18', '123456', 3, 'Lê Thị Nhân Viên18', '0932340018', 36, 'employee18@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(73, 'employee19', '123456', 3, 'Lê Thị Nhân Viên19', '0932340019', 50, 'employee19@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(74, 'employee20', '123456', 3, 'Lê Thị Nhân Viên20', '0932340020', 44, 'employee20@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(75, 'employee21', '123456', 3, 'Lê Thị Nhân Viên21', '0932340021', 39, 'employee21@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(76, 'employee22', '123456', 3, 'Lê Thị Nhân Viên22', '0932340022', 34, 'employee22@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(77, 'employee23', '123456', 3, 'Lê Thị Nhân Viên23', '0932340023', 41, 'employee23@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(78, 'employee24', '123456', 3, 'Lê Thị Nhân Viên24', '0932340024', 50, 'employee24@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(79, 'employee25', '123456', 3, 'Lê Thị Nhân Viên25', '0932340025', 26, 'employee25@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(80, 'employee26', '123456', 3, 'Lê Thị Nhân Viên26', '0932340026', 50, 'employee26@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(81, 'employee27', '123456', 3, 'Lê Thị Nhân Viên27', '0932340027', 22, 'employee27@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(82, 'employee28', '123456', 3, 'Lê Thị Nhân Viên28', '0932340028', 29, 'employee28@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(83, 'employee29', '123456', 3, 'Lê Thị Nhân Viên29', '0932340029', 30, 'employee29@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(84, 'employee30', '123456', 3, 'Lê Thị Nhân Viên30', '0932340030', 38, 'employee30@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(85, 'employee31', '123456', 3, 'Lê Thị Nhân Viên31', '0932340031', 23, 'employee31@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(86, 'employee32', '123456', 3, 'Lê Thị Nhân Viên32', '0932340032', 33, 'employee32@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(87, 'employee33', '123456', 3, 'Lê Thị Nhân Viên33', '0932340033', 46, 'employee33@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(88, 'employee34', '123456', 3, 'Lê Thị Nhân Viên34', '0932340034', 44, 'employee34@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(89, 'employee35', '123456', 3, 'Lê Thị Nhân Viên35', '0932340035', 25, 'employee35@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(90, 'employee36', '123456', 3, 'Lê Thị Nhân Viên36', '0932340036', 25, 'employee36@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(91, 'employee37', '123456', 3, 'Lê Thị Nhân Viên37', '0932340037', 47, 'employee37@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(92, 'employee38', '123456', 3, 'Lê Thị Nhân Viên38', '0932340038', 32, 'employee38@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(93, 'employee39', '123456', 3, 'Lê Thị Nhân Viên39', '0932340039', 30, 'employee39@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(94, 'employee40', '123456', 3, 'Lê Thị Nhân Viên40', '0932340040', 30, 'employee40@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(95, 'employee41', '123456', 3, 'Lê Thị Nhân Viên41', '0932340041', 37, 'employee41@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(96, 'employee42', '123456', 3, 'Lê Thị Nhân Viên42', '0932340042', 46, 'employee42@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(97, 'employee43', '123456', 3, 'Lê Thị Nhân Viên43', '0932340043', 26, 'employee43@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(98, 'employee44', '123456', 3, 'Lê Thị Nhân Viên44', '0932340044', 45, 'employee44@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(99, 'employee45', '123456', 3, 'Lê Thị Nhân Viên45', '0932340045', 31, 'employee45@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(100, 'employee46', '123456', 3, 'Lê Thị Nhân Viên46', '0932340046', 31, 'employee46@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(101, 'employee47', '123456', 3, 'Lê Thị Nhân Viên47', '0932340047', 24, 'employee47@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(102, 'employee48', '123456', 3, 'Lê Thị Nhân Viên48', '0932340048', 22, 'employee48@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(103, 'employee49', '123456', 3, 'Lê Thị Nhân Viên49', '0932340049', 21, 'employee49@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(104, 'employee50', '123456', 3, 'Lê Thị Nhân Viên50', '0932340050', 33, 'employee50@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(105, 'employee51', '123456', 3, 'Lê Thị Nhân Viên51', '0932340051', 47, 'employee51@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(106, 'employee52', '123456', 3, 'Lê Thị Nhân Viên52', '0932340052', 24, 'employee52@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(107, 'employee53', '123456', 3, 'Lê Thị Nhân Viên53', '0932340053', 20, 'employee53@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(108, 'employee54', '123456', 3, 'Lê Thị Nhân Viên54', '0932340054', 45, 'employee54@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(109, 'employee55', '123456', 3, 'Lê Thị Nhân Viên55', '0932340055', 45, 'employee55@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(110, 'employee56', '123456', 3, 'Lê Thị Nhân Viên56', '0932340056', 48, 'employee56@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(111, 'employee57', '123456', 3, 'Lê Thị Nhân Viên57', '0932340057', 39, 'employee57@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(112, 'employee58', '123456', 3, 'Lê Thị Nhân Viên58', '0932340058', 41, 'employee58@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(113, 'employee59', '123456', 3, 'Lê Thị Nhân Viên59', '0932340059', 42, 'employee59@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(114, 'employee60', '123456', 3, 'Lê Thị Nhân Viên60', '0932340060', 34, 'employee60@example.com', 'Đà Nẵng', '2025-06-04 23:23:38', '2025-06-04 23:23:38', NULL, NULL, b'0', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(117, 'customer_huy911441', '$2a$10$IVJA/d.cQAsd98G9Yf9viO7P2Uke9SQHIHNRAmG6r/8VLxg0J4JGm', 6, 'Kerala Ranchi', '0792967872', NULL, 'huy911441@gmail.com', NULL, '2026-04-06 21:45:10', '2026-04-06 22:00:05', NULL, NULL, b'1', '477202', '2026-04-06 21:55:09.768389', 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(118, 'customer_huy411441', '$2a$10$fwX1EyAaD.K6xVkRjxXNz..xZYBj8I4qaIma1QCQysW5fU3/0PPh.', 6, 'Kerala Ranchi', '0792967870', NULL, 'huy411441@gmail.com', NULL, '2026-04-07 12:37:00', '2026-04-07 12:37:24', NULL, NULL, b'1', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(119, 'customer_lmjames997', '$2a$10$gyiSVPjxMmVSTWWkbwMtR.p0R24t.p543huMP3aAvnO5.3cxuXQwi', 6, 'NgDat', '0944358321', NULL, 'lmjames997@gmail.com', NULL, '2026-04-07 12:52:56', '2026-04-07 12:53:19', NULL, NULL, b'1', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL),
+(120, 'customer_huy811441', '$2a$10$AZ.pD5Z/4zRwk8bT9XKYqOQuGxXtYJW6Q6WK6L3ZJxpAhLniQd1dG', 6, 'dat', '0666686643', NULL, 'huy811441@gmail.com', NULL, '2026-04-07 12:57:20', '2026-04-07 12:57:39', NULL, NULL, b'1', NULL, NULL, 0, NULL, NULL, NULL, NULL, b'0', NULL);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
