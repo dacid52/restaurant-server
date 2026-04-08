@@ -20,3 +20,6 @@ jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000}
 
+app:
+  customer-base-url: http://restaurant-server.site:3011
+

@@ -3,8 +3,11 @@ package com.restaurant.menuservice.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "buffet_packages")
@@ -24,4 +27,11 @@ public class BuffetPackage {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
+    @OneToMany(mappedBy = "buffetPackage", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<BuffetPackageFood> packageFoods = new ArrayList<>();
 }

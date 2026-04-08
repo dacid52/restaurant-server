@@ -2,6 +2,7 @@ package com.restaurant.menuservice.controller;
 
 import com.restaurant.menuservice.entity.Food;
 import com.restaurant.menuservice.entity.FoodIngredient;
+import com.restaurant.menuservice.repository.BuffetPackageFoodRepository;
 import com.restaurant.menuservice.repository.FoodIngredientRepository;
 import com.restaurant.menuservice.repository.FoodRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class InternalMenuController {
 
     private final FoodRepository foodRepository;
     private final FoodIngredientRepository foodIngredientRepository;
+    private final BuffetPackageFoodRepository buffetPackageFoodRepository;
 
     @GetMapping("/prices")
     public Map<Integer, BigDecimal> getFoodPrices(@RequestParam @NonNull List<Integer> foodIds) {
@@ -66,5 +68,11 @@ public class InternalMenuController {
             result.put(foodId, ingredients);
         }
         return result;
+    }
+
+    /** Trả về danh sách food ID thuộc một gói buffet. Dùng cho trang khách gọi món buffet. */
+    @GetMapping("/buffet-package-foods")
+    public List<Integer> getBuffetPackageFoodIds(@RequestParam @NonNull Integer packageId) {
+        return buffetPackageFoodRepository.findFoodIdsByBuffetPackageId(packageId);
     }
 }

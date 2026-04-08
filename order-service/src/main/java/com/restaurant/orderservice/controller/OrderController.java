@@ -31,6 +31,7 @@ public class OrderController {
     private final OrderService orderService;
 
     @PostMapping
+    @SuppressWarnings("null")
     public ResponseEntity<OrderResponseDto> createOrder(@Valid @RequestBody OrderRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(orderService.getOrderResponseById(orderService.createOrder(request).getId()));

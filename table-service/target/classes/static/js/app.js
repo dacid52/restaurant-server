@@ -343,6 +343,11 @@ function renderBuffetPackages() {
   const container = document.getElementById('buffet-packages');
   if (!container) return;
 
+  if (state.buffetPackages.length === 0) {
+    container.innerHTML = '<div class="empty-state"><p class="empty-title">Chưa có gói buffet</p><p class="empty-desc">Vui lòng liên hệ nhân viên để biết thêm thông tin</p></div>';
+    return;
+  }
+
   container.innerHTML = state.buffetPackages.map((pkg) => `
     <div class="buffet-package-card ${pkg.popular ? 'popular' : ''}">
       ${pkg.popular ? '<span class="buffet-package-badge">Phổ biến</span>' : ''}
@@ -798,24 +803,39 @@ async function loadMenu() {
 }
 
 async function loadBuffetMenu() {
-  const foods = await fetchJson('/api/menu/foods');
-  const categories = await fetchJson('/api/menu/categories');
+  const packageId = state.selectedBuffetPackage?.id;
+  const [categories, allFoods] = await Promise.all([
+    fetchJson('/api/menu/categories'),
+    fetchJson('/api/menu/foods'),
+  ]);
+
+  let filteredFoods = allFoods;
+  if (packageId) {
+    try {
+      const foodIds = await fetchJson(`/api/foods/buffet-package-foods?packageId=${packageId}`);
+      if (Array.isArray(foodIds) && foodIds.length > 0) {
+        filteredFoods = allFoods.filter(f => foodIds.includes(f.id));
+      }
+    } catch (e) {
+      console.warn('Không tải được danh sách món buffet theo gói, hiển thị tất cả');
+    }
+  }
+
   const mapped = categories.map(c => ({
-    ...c, 
-    foods: foods.filter(f => String(f.category_id) === String(c.id))
+    ...c,
+    foods: filteredFoods.filter(f => String(f.category_id) === String(c.id))
   })).filter(c => c.foods.length > 0);
   state.buffetFoodCategories = mapped;
-  state.buffetDrinkCategories = []; // Not split in current menu logic
-
+  state.buffetDrinkCategories = [];
 }
 
 async function loadBuffetPackages() {
-  // Buffet packages endpoint not migrated to microservices yet
   try {
       const res = await fetchJson('/api/menu/buffet-packages');
-      state.buffetPackages = res?.length ? res : [{ id: 1, name: "Buffet Tiêu Chuẩn (Chưa cấu hình CSDL)", price: 299000 }];
+      state.buffetPackages = res?.filter(p => p.isActive !== false) || [];
   } catch (e) {
-      state.buffetPackages = [{ id: 1, name: "Buffet Tiêu Chuẩn (Lỗi mạng)", price: 299000 }];
+      state.buffetPackages = [];
+      console.warn('Không tải được danh sách gói buffet:', e.message);
   }
 }
 

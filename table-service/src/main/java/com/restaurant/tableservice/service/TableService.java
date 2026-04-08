@@ -7,13 +7,13 @@ import com.restaurant.tableservice.repository.TableRepository;
 import com.restaurant.tableservice.repository.TableReservationRepository;
 import com.restaurant.tableservice.util.QrCodeUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.net.InetAddress;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -29,6 +29,9 @@ import java.util.UUID;
 public class TableService {
 
     private static final Set<String> VALID_TABLE_STATUSES = Set.of("Trống", "Đang sử dụng", "Đã đặt", "Chờ xác nhận");
+
+    @Value("${app.customer-base-url:http://restaurant-server.site:3011}")
+    private String customerBaseUrl;
 
     private final TableRepository tableRepository;
     private final TableKeyRepository tableKeyRepository;
@@ -137,6 +140,7 @@ public class TableService {
     }
 
     @Transactional
+    @SuppressWarnings("null")
     public com.restaurant.tableservice.entity.TableReservation updateReservationStatus(Integer id, String status) {
         if (id == null) throw new RuntimeException("Thiếu reservation_id");
         if (status == null || status.isBlank()) throw new RuntimeException("Thiếu trạng thái");
@@ -187,6 +191,7 @@ public class TableService {
         return tableRepository.save(table);
     }
 
+    @SuppressWarnings("null")
     @Transactional
     public RestaurantTable updateTable(@NonNull Integer id, String name, String status, Boolean isBuffet, Integer capacity) {
         RestaurantTable existing = getTableById(id);
@@ -228,6 +233,7 @@ public class TableService {
      * Response trả thêm: reservation_id, customer_name, table_name (ngoài QR fields chuẩn).
      */
     @Transactional
+    @SuppressWarnings("null")
     public Map<String, Object> checkinReservation(@NonNull Integer reservationId) {
         com.restaurant.tableservice.entity.TableReservation reservation =
                 tableReservationRepository.findById(reservationId)
@@ -273,6 +279,7 @@ public class TableService {
      *   expires_at      – LocalDateTime hết hạn (chỉ có khi valid = true)
      */
     @Transactional
+    @SuppressWarnings("null")
     public Map<String, Object> validateTableKey(@NonNull Integer tableId,
                                                 @NonNull String tableKey,
                                                 String deviceSession) {
@@ -331,10 +338,9 @@ public class TableService {
     @Transactional
     public Map<String, Object> generateStaticQRCode(@NonNull Integer id) {
         RestaurantTable table = getTableById(id);
-        String localIP = getLocalIpAddress();
         // Static QR trỏ thẳng đến endpoint generate-access trên table-service (:3011).
         // Khi khách quét, /generate-access sẽ tạo key mới rồi redirect sang index.html.
-        String qrUrl = "http://" + localIP + ":3011/api/tables/" + id + "/generate-access";
+        String qrUrl = customerBaseUrl + "/api/tables/" + id + "/generate-access";
 
         Map<String, Object> res = new HashMap<>();
         res.put("table_id", id);
@@ -403,8 +409,7 @@ public class TableService {
         key.setIsValid(true);
         tableKeyRepository.save(key);
 
-        String localIP = getLocalIpAddress();
-        String qrUrl = "http://" + localIP + ":3011/index.html?tableId=" + id + "&tableKey=" + keyValue;
+        String qrUrl = customerBaseUrl + "/index.html?tableId=" + id + "&tableKey=" + keyValue;
 
         Map<String, Object> res = new HashMap<>();
         res.put("table_id", id);
@@ -432,14 +437,6 @@ public class TableService {
             throw new RuntimeException("Ban dang duoc su dung. Vui long lien he nhan vien de ho tro.");
         }
         return generateDynamicQRCode(id);
-    }
-
-    private String getLocalIpAddress() {
-        try {
-            return InetAddress.getLocalHost().getHostAddress();
-        } catch (Exception e) {
-            return "localhost";
-        }
     }
 
     private LocalDateTime parseDateTime(String value, String fieldName) {

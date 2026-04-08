@@ -1,9 +1,11 @@
 package com.restaurant.menuservice.controller;
 
+import com.restaurant.menuservice.dto.BuffetPackageDto;
 import com.restaurant.menuservice.dto.FoodCreateUpdateDto;
 import com.restaurant.menuservice.dto.FoodDto;
 import com.restaurant.menuservice.entity.Category;
 import com.restaurant.menuservice.service.MenuService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -12,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import org.springframework.lang.NonNull;
-import com.restaurant.menuservice.entity.BuffetPackage;
 
 @RestController
 @RequestMapping("/api/menu")
@@ -50,9 +51,42 @@ public class MenuController {
         return ResponseEntity.ok().build();
     }
 
+    // Buffet Packages
     @GetMapping("/buffet-packages")
-    public ResponseEntity<List<BuffetPackage>> getBuffetPackages() {
+    public ResponseEntity<List<BuffetPackageDto>> getBuffetPackages() {
         return ResponseEntity.ok(menuService.getBuffetPackages());
+    }
+
+    @GetMapping("/buffet-packages/{id}")
+    public ResponseEntity<BuffetPackageDto> getBuffetPackageById(@PathVariable @NonNull Integer id) {
+        return ResponseEntity.ok(menuService.getBuffetPackageById(id));
+    }
+
+    @SuppressWarnings("null")
+    @PostMapping("/buffet-packages")
+    public ResponseEntity<BuffetPackageDto> createBuffetPackage(@RequestBody BuffetPackageDto dto, HttpServletRequest request) {
+        if (!isAdminOrManager(request)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.status(HttpStatus.CREATED).body(menuService.createBuffetPackage(dto));
+    }
+
+    @SuppressWarnings("null")
+    @PutMapping("/buffet-packages/{id}")
+    public ResponseEntity<BuffetPackageDto> updateBuffetPackage(@PathVariable @NonNull Integer id, @RequestBody BuffetPackageDto dto, HttpServletRequest request) {
+        if (!isAdminOrManager(request)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(menuService.updateBuffetPackage(id, dto));
+    }
+
+    @DeleteMapping("/buffet-packages/{id}")
+    public ResponseEntity<Void> deleteBuffetPackage(@PathVariable @NonNull Integer id, HttpServletRequest request) {
+        if (!isAdminOrManager(request)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        menuService.deleteBuffetPackage(id);
+        return ResponseEntity.ok().build();
+    }
+
+    /** Chỉ cho phép ADMIN và MANAGER thao tác với gói buffet */
+    private boolean isAdminOrManager(HttpServletRequest request) {
+        String role = (String) request.getAttribute("roleName");
+        return "ADMIN".equalsIgnoreCase(role) || "MANAGER".equalsIgnoreCase(role);
     }
 
     // Foods

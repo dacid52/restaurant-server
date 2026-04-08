@@ -32,6 +32,7 @@ public class EmailService {
      * Gửi email OTP (6 chữ số) xác thực tài khoản.
      * Nếu mail chưa được cấu hình (username trống), in OTP ra console để test.
      */
+    @SuppressWarnings("null")
     public void sendOtpEmail(String toEmail, String fullName, String otp) {
         if (mailUsername == null || mailUsername.isBlank()) {
             log.info("=== [DEV MODE] Email Verification OTP ===");
@@ -91,6 +92,7 @@ public class EmailService {
      * Gửi email xác thực tài khoản (legacy - giữ lại cho backward compatibility).
      * Nếu mail chưa được cấu hình (username trống), in token ra console để test.
      */
+    @SuppressWarnings("null")
     public void sendVerificationEmail(String toEmail, String fullName, String token) {
         String verifyUrl = baseUrl + "/api/users/verify-email?token=" + token;
 

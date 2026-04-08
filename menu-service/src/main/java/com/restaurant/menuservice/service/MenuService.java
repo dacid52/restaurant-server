@@ -1,17 +1,20 @@
 package com.restaurant.menuservice.service;
 
 import com.restaurant.menuservice.client.InventoryClient;
+import com.restaurant.menuservice.dto.BuffetPackageDto;
 import com.restaurant.menuservice.dto.FoodCreateUpdateDto;
 import com.restaurant.menuservice.dto.FoodDto;
 import com.restaurant.menuservice.dto.IngredientDto;
+import com.restaurant.menuservice.entity.BuffetPackage;
+import com.restaurant.menuservice.entity.BuffetPackageFood;
 import com.restaurant.menuservice.entity.Category;
 import com.restaurant.menuservice.entity.Food;
 import com.restaurant.menuservice.entity.FoodIngredient;
+import com.restaurant.menuservice.repository.BuffetPackageFoodRepository;
+import com.restaurant.menuservice.repository.BuffetPackageRepository;
 import com.restaurant.menuservice.repository.CategoryRepository;
 import com.restaurant.menuservice.repository.FoodIngredientRepository;
 import com.restaurant.menuservice.repository.FoodRepository;
-import com.restaurant.menuservice.repository.BuffetPackageRepository;
-import com.restaurant.menuservice.entity.BuffetPackage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,6 +36,9 @@ public class MenuService {
     private final FoodIngredientRepository foodIngredientRepository;
     private final InventoryClient inventoryClient;
     private final BuffetPackageRepository buffetPackageRepository;
+    private final BuffetPackageFoodRepository buffetPackageFoodRepository;
+
+    // ─── Categories ─────────────────────────────────────────────────────
 
     public List<Category> getAllCategories() {
         return categoryRepository.findAll();
@@ -62,9 +68,95 @@ public class MenuService {
         categoryRepository.deleteById(id);
     }
 
-    public List<BuffetPackage> getBuffetPackages() {
-        return buffetPackageRepository.findAll();
+    // ─── Buffet Packages ────────────────────────────────────────────────
+
+    public List<BuffetPackageDto> getBuffetPackages() {
+        return buffetPackageRepository.findAll().stream()
+                .map(this::toBuffetPackageDto)
+                .collect(Collectors.toList());
     }
+
+    public BuffetPackageDto getBuffetPackageById(@NonNull Integer id) {
+        BuffetPackage pkg = buffetPackageRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy gói buffet"));
+        return toBuffetPackageDto(pkg);
+    }
+
+    @Transactional
+    @SuppressWarnings("null")
+    public BuffetPackageDto createBuffetPackage(@NonNull BuffetPackageDto dto) {
+        BuffetPackage pkg = new BuffetPackage();
+        pkg.setName(dto.getName());
+        pkg.setPrice(dto.getPrice());
+        pkg.setDescription(dto.getDescription());
+        pkg.setIsActive(dto.getIsActive() != null ? dto.getIsActive() : true);
+        BuffetPackage saved = buffetPackageRepository.save(pkg);
+        setPackageFoods(saved, dto.getFoodIds());
+        return toBuffetPackageDto(saved);
+    }
+
+    @SuppressWarnings("null")
+    @Transactional
+    public BuffetPackageDto updateBuffetPackage(@NonNull Integer id, @NonNull BuffetPackageDto dto) {
+        BuffetPackage pkg = buffetPackageRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy gói buffet"));
+        if (dto.getName() != null) pkg.setName(dto.getName());
+        if (dto.getPrice() != null) pkg.setPrice(dto.getPrice());
+        if (dto.getDescription() != null) pkg.setDescription(dto.getDescription());
+        if (dto.getIsActive() != null) pkg.setIsActive(dto.getIsActive());
+        buffetPackageRepository.save(pkg);
+        if (dto.getFoodIds() != null) {
+            setPackageFoods(pkg, dto.getFoodIds());
+        }
+        return toBuffetPackageDto(pkg);
+    }
+
+    @Transactional
+    public void deleteBuffetPackage(@NonNull Integer id) {
+        buffetPackageFoodRepository.deleteByBuffetPackageId(id);
+        buffetPackageRepository.deleteById(id);
+    }
+
+    /** Trả về danh sách FoodDto thuộc gói buffet (dùng cho trang gọi món của khách) */
+    public List<FoodDto> getFoodsByBuffetPackageId(@NonNull Integer packageId) {
+        List<Integer> foodIds = buffetPackageFoodRepository.findFoodIdsByBuffetPackageId(packageId);
+        if (foodIds.isEmpty()) return List.of();
+        return foodRepository.findAllById(foodIds).stream()
+                .map(this::mapFoodToDto)
+                .collect(Collectors.toList());
+    }
+
+    private void setPackageFoods(BuffetPackage pkg, List<Integer> foodIds) {
+        buffetPackageFoodRepository.deleteByBuffetPackageId(pkg.getId());
+        if (foodIds == null || foodIds.isEmpty()) return;
+        for (Integer foodId : foodIds) {
+            BuffetPackageFood link = new BuffetPackageFood();
+            link.setBuffetPackage(pkg);
+            link.setFoodId(foodId);
+            buffetPackageFoodRepository.save(link);
+        }
+    }
+
+    private BuffetPackageDto toBuffetPackageDto(BuffetPackage pkg) {
+        BuffetPackageDto dto = new BuffetPackageDto();
+        dto.setId(pkg.getId());
+        dto.setName(pkg.getName());
+        dto.setPrice(pkg.getPrice());
+        dto.setDescription(pkg.getDescription());
+        dto.setIsActive(pkg.getIsActive());
+        List<Integer> foodIds = buffetPackageFoodRepository.findFoodIdsByBuffetPackageId(pkg.getId());
+        dto.setFoodIds(foodIds);
+        if (!foodIds.isEmpty()) {
+            dto.setFoods(foodRepository.findAllById(foodIds).stream()
+                    .map(this::mapFoodToDto)
+                    .collect(Collectors.toList()));
+        } else {
+            dto.setFoods(List.of());
+        }
+        return dto;
+    }
+
+    // ─── Foods ──────────────────────────────────────────────────────────
 
     public List<FoodDto> getFoods(Integer categoryId) {
         List<Food> foods = categoryId != null ? foodRepository.findByCategoryId(categoryId) : foodRepository.findAll();
@@ -130,7 +222,6 @@ public class MenuService {
 
     @Transactional
     public void deleteFood(@NonNull Integer id) {
-        // Assume constraints checked externally
         foodIngredientRepository.deleteByFoodId(id);
         foodRepository.deleteById(id);
     }

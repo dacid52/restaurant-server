@@ -87,6 +87,11 @@ const menuItems = [
         url: "/portioning",
         icon: Scale,
     },
+    {
+        title: "Gói Buffet",
+        url: "/buffet",
+        icon: UtensilsCrossed,
+    },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {

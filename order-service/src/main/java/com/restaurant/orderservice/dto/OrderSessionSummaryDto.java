@@ -19,5 +19,10 @@ public class OrderSessionSummaryDto {
     private String payment_status;
     private Boolean buffet_active;
     private String buffet_package_name;
+    /** Luồng buffet đang chờ thu ngân xác nhận */
+    private Boolean has_pending_buffet;
+    private Integer pending_buffet_order_id;
+    private String pending_buffet_package_name;
+    private BigDecimal pending_buffet_price;
     private LocalDateTime last_order_time;
 }

@@ -6,6 +6,9 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.resource.PathResourceResolver;
 
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
+
 import java.io.IOException;
 
 @Configuration
@@ -23,13 +26,14 @@ public class SpaResourceConfig implements WebMvcConfigurer {
      *  3. null → 404
      */
     @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+    public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/**")
                 .addResourceLocations("classpath:/static/")
                 .resourceChain(true)
                 .addResolver(new PathResourceResolver() {
                     @Override
-                    protected Resource getResource(String resourcePath, Resource location) throws IOException {
+                    @Nullable
+                    protected Resource getResource(@NonNull String resourcePath, @NonNull Resource location) throws IOException {
                         Resource exact = location.createRelative(resourcePath);
                         if (exact.exists() && exact.isReadable()) {
                             return exact;

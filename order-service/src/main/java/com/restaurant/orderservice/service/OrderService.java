@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -180,9 +179,20 @@ public class OrderService {
                 .mapToInt(detail -> detail.getQuantity() != null ? detail.getQuantity() : 0)
                 .sum();
 
+        // Đơn buffet đã được xác nhận (status != Chờ xác nhận)
         Order buffetOrder = orders.stream()
-                .filter(order -> Boolean.TRUE.equals(order.getIsBuffet()) && order.getBuffetSessionId() != null)
+                .filter(order -> Boolean.TRUE.equals(order.getIsBuffet())
+                        && order.getBuffetSessionId() != null
+                        && !"Chờ xác nhận".equals(order.getStatus()))
                 .reduce((first, second) -> second)
+                .orElse(null);
+
+        // Đơn buffet đang chờ thu ngân xác nhận
+        Order pendingBuffetOrder = orders.stream()
+                .filter(order -> Boolean.TRUE.equals(order.getIsBuffet())
+                        && "Chờ xác nhận".equals(order.getStatus())
+                        && !"paid".equalsIgnoreCase(order.getPaymentStatus()))
+                .findFirst()
                 .orElse(null);
 
         Order latestOrder = orders.stream().reduce((first, second) -> second).orElse(null);
@@ -198,6 +208,10 @@ public class OrderService {
                 .payment_status(resolveSessionPaymentStatus(orders))
                 .buffet_active(buffetOrder != null && !"paid".equalsIgnoreCase(buffetOrder.getPaymentStatus()))
                 .buffet_package_name(buffetOrder != null ? buffetOrder.getBuffetPackageName() : null)
+                .has_pending_buffet(pendingBuffetOrder != null)
+                .pending_buffet_order_id(pendingBuffetOrder != null ? pendingBuffetOrder.getId() : null)
+                .pending_buffet_package_name(pendingBuffetOrder != null ? pendingBuffetOrder.getBuffetPackageName() : null)
+                .pending_buffet_price(pendingBuffetOrder != null ? pendingBuffetOrder.getTotal() : null)
                 .last_order_time(latestOrder != null ? latestOrder.getOrderTime() : null)
                 .build();
     }
@@ -430,13 +444,14 @@ public class OrderService {
                 .map(OrderDetail::getId)
                 .collect(Collectors.toList());
 
-        // BUG-024: Gọi kitchen TRƯỚC khi update status — nếu thất bại thì rollback
-        // Exception từ kitchenClient sẽ được propagate lên, transaction sẽ rollback
-        try {
-            kitchenClient.notifyNewOrder(Map.of("added_items", detailIds));
-        } catch (Exception e) {
-            log.error("❌ Kitchen service không khả dụng — hủy xác nhận order {}: {}", id, e.getMessage());
-            throw new RuntimeException("Không thể gửi order đến bếp: " + e.getMessage());
+        // Bỏ qua bước gửi bếp cho đơn kích hoạt buffet (không có món)
+        if (!detailIds.isEmpty()) {
+            try {
+                kitchenClient.notifyNewOrder(Map.of("added_items", detailIds));
+            } catch (Exception e) {
+                log.error("❌ Kitchen service không khả dụng — hủy xác nhận order {}: {}", id, e.getMessage());
+                throw new RuntimeException("Không thể gửi order đến bếp: " + e.getMessage());
+            }
         }
 
         order.setStatus("Đang nấu");
@@ -527,10 +542,13 @@ public class OrderService {
                 .map(OrderDetail::getId)
                 .toList();
 
-        try {
-            kitchenClient.notifyNewOrder(Map.of("added_items", detailIds));
-        } catch (Exception e) {
-            log.warn("Kitchen service không khả dụng khi confirm session {}-{}: {}", tableId, tableKey, e.getMessage());
+        // Chỉ thông báo bếp nếu có món thực sự (tránh gọi bếp cho đơn kích hoạt buffet)
+        if (!detailIds.isEmpty()) {
+            try {
+                kitchenClient.notifyNewOrder(Map.of("added_items", detailIds));
+            } catch (Exception e) {
+                log.warn("Kitchen service không khả dụng khi confirm session {}-{}: {}", tableId, tableKey, e.getMessage());
+            }
         }
 
         pendingOrders.forEach(order -> order.setStatus("Đang nấu"));
@@ -619,6 +637,7 @@ public class OrderService {
     }
 
     @Transactional
+    @SuppressWarnings("null")
     public Map<String, Object> completePayment(Integer tableId, String tableKey, List<Integer> orderIds) {
         log.info("💳 Completing payment - Table: {}, Orders: {}", tableId, orderIds);
 

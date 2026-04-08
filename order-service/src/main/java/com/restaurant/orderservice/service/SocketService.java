@@ -19,6 +19,7 @@ public class SocketService {
 
     private final SimpMessagingTemplate messagingTemplate;
 
+    @SuppressWarnings("null")
     private void emitTableEvent(Integer tableId, @NonNull String eventName, @NonNull Map<String, Object> data) {
         if (tableId != null) {
             messagingTemplate.convertAndSend("/topic/table." + tableId,
@@ -38,11 +39,13 @@ public class SocketService {
         emitTableEvent(tableId, "order_created", data);
     }
 
+    @SuppressWarnings("null")
     public void emitBuffetOrderCreated(Integer tableId, @NonNull Map<String, Object> data) {
         log.info("🍽️ WebSocket emit buffet_order_created: tableId={}", tableId);
         emitTableEvent(tableId, "buffet_order_created", data);
     }
 
+    @SuppressWarnings("null")
     public void emitBuffetFoodAdded(Integer tableId, @NonNull Map<String, Object> data) {
         log.info("🥗 WebSocket emit buffet_food_added: tableId={}", tableId);
         emitTableEvent(tableId, "buffet_food_added", data);

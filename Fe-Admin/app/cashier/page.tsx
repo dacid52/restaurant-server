@@ -16,7 +16,8 @@ import {
     History,
     Wifi,
     WifiOff,
-    Printer
+    Printer,
+    UtensilsCrossed
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,12 @@ interface OrderSessionSummary {
     status: string;
     payment_status: string;
     last_order_time: string;
+    buffet_active?: boolean;
+    buffet_package_name?: string;
+    has_pending_buffet?: boolean;
+    pending_buffet_order_id?: number;
+    pending_buffet_package_name?: string;
+    pending_buffet_price?: number;
 }
 
 interface OrderSessionDetail {
@@ -128,8 +135,7 @@ export default function CashierPage() {
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
-
-    // Initialize WebSockets
+    const [confirmingBuffetId, setConfirmingBuffetId] = useState<number | null>(null);
     useEffect(() => {
         let mounted = true;
 
@@ -404,6 +410,28 @@ export default function CashierPage() {
         }
     };
 
+    // Confirm buffet activation (thu ngân duyệt gói buffet cho khách)
+    const confirmBuffetActivation = async (orderId: number, tableId: number) => {
+        setConfirmingBuffetId(orderId);
+        try {
+            await api.post(`/orders/${orderId}/confirm`);
+            toast.success("Đã kích hoạt buffet", {
+                description: `Bàn ${tableId} có thể bắt đầu gọi món buffet.`,
+            });
+            mutate("/orders/sessions");
+        } catch (error: any) {
+            toast.error("Kích hoạt buffet thất bại", {
+                description: error.response?.data?.message || error.message,
+            });
+        } finally {
+            setConfirmingBuffetId(null);
+        }
+    };
+
+    const pendingBuffetSessions = allSessions?.filter(
+        (s: OrderSessionSummary) => s.has_pending_buffet
+    ) || [];
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -463,6 +491,15 @@ export default function CashierPage() {
                     <TabsTrigger value="waiting" className="gap-2">
                         <Receipt className="size-4" />
                         Yêu cầu (<span className="text-amber-500 font-bold">{totalWaiting}</span>)
+                    </TabsTrigger>
+                    <TabsTrigger value="buffet" className="gap-2">
+                        <UtensilsCrossed className="size-4" />
+                        Xác nhận Buffet
+                        {pendingBuffetSessions.length > 0 && (
+                            <span className="ml-1 rounded-full bg-orange-500 text-white text-xs px-1.5 py-0.5">
+                                {pendingBuffetSessions.length}
+                            </span>
+                        )}
                     </TabsTrigger>
                     <TabsTrigger value="unpaid" className="gap-2">
                         <Users className="size-4" />
@@ -566,6 +603,80 @@ export default function CashierPage() {
                                                             Thu tiền
                                                         </Button>
                                                     </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                {/* Buffet Activation Tab */}
+                <TabsContent value="buffet">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Xác nhận kích hoạt Buffet</CardTitle>
+                            <CardDescription>
+                                Các bàn đã chọn gói buffet và đang chờ thu ngân xác nhận trước khi được phép gọi món.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {isLoadingOrders ? (
+                                <div className="space-y-4">
+                                    {[1, 2].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
+                                </div>
+                            ) : pendingBuffetSessions.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                                    <UtensilsCrossed className="size-12 text-green-500/50 mb-4" />
+                                    <h3 className="text-lg font-medium text-foreground">Không có yêu cầu buffet nào</h3>
+                                    <p className="text-sm mt-1">Khi khách chọn gói buffet, yêu cầu sẽ hiển thị ở đây.</p>
+                                </div>
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Bàn</TableHead>
+                                            <TableHead>Gói buffet</TableHead>
+                                            <TableHead>Giá gói</TableHead>
+                                            <TableHead className="text-right">Thao tác</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {pendingBuffetSessions.map((session: OrderSessionSummary) => (
+                                            <TableRow key={`buffet-${session.table_id}-${session.table_key}`}>
+                                                <TableCell>
+                                                    <Badge variant="outline" className="font-semibold">
+                                                        Bàn {session.table_id}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="font-medium">
+                                                    {session.pending_buffet_package_name || "Gói buffet"}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {session.pending_buffet_price
+                                                        ? formatCurrency(session.pending_buffet_price)
+                                                        : "—"}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button
+                                                        size="sm"
+                                                        className="bg-orange-500 hover:bg-orange-600"
+                                                        disabled={confirmingBuffetId === session.pending_buffet_order_id}
+                                                        onClick={() =>
+                                                            session.pending_buffet_order_id &&
+                                                            confirmBuffetActivation(
+                                                                session.pending_buffet_order_id,
+                                                                session.table_id
+                                                            )
+                                                        }
+                                                    >
+                                                        <UtensilsCrossed className="size-4 mr-1" />
+                                                        {confirmingBuffetId === session.pending_buffet_order_id
+                                                            ? "Đang xử lý..."
+                                                            : "Kích hoạt Buffet"}
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
