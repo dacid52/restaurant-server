@@ -754,6 +754,8 @@ async function confirmBuffetOrder() {
 function openPaymentModal() {
   const totalAmount = state.summary?.total_amount || 0;
   document.getElementById('payment-total').textContent = formatCurrency(totalAmount);
+  // Reset về tiền mặt mỗi khi mở modal
+  selectPaymentMethod('cash');
   document.getElementById('payment-modal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 }
@@ -763,7 +765,25 @@ function closePaymentModal() {
   document.body.style.overflow = '';
 }
 
-async function submitPaymentRequest() {
+function selectPaymentMethod(method) {
+  const btnCash  = document.getElementById('btn-cash');
+  const btnMomo  = document.getElementById('btn-momo');
+  const cashNote = document.getElementById('payment-cash-note');
+  const momoNote = document.getElementById('payment-momo-note');
+  if (method === 'momo') {
+    btnCash.classList.remove('active');
+    btnMomo.classList.add('active');
+    cashNote.style.display = 'none';
+    momoNote.style.display = 'block';
+  } else {
+    btnCash.classList.add('active');
+    btnMomo.classList.remove('active');
+    cashNote.style.display = 'block';
+    momoNote.style.display = 'none';
+  }
+}
+
+async function submitPaymentRequest(paymentMethod = 'cash') {
   const requestOrderId = getRequestPaymentOrderId();
   if (!requestOrderId) {
     showToast('Chưa có đơn hàng để thanh toán', 'error');
@@ -773,14 +793,44 @@ async function submitPaymentRequest() {
   try {
     await fetchJson(`/api/orders/${requestOrderId}/request-payment`, {
       method: 'POST',
-      body: JSON.stringify({ table_key: state.tableKey }),
+      body: JSON.stringify({ table_key: state.tableKey, payment_method: paymentMethod }),
     });
     closePaymentModal();
     await refreshOrders();
-    showToast('Đã gửi yêu cầu thanh toán');
+    showToast(paymentMethod === 'momo'
+      ? 'Đã gửi yêu cầu MoMo đến thu ngân'
+      : 'Đã gửi yêu cầu thanh toán');
   } catch (error) {
     showToast(error.message || 'Không thể gửi yêu cầu thanh toán', 'error');
   }
+}
+
+async function submitMomoPayment() {
+  const btn = document.getElementById('btn-pay-momo');
+  if (btn) { btn.disabled = true; btn.textContent = 'Đang gửi yêu cầu...'; }
+
+  try {
+    await submitPaymentRequest('momo');
+  } catch (error) {
+    showToast(error.message || 'Không thể gửi yêu cầu MoMo', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-right:8px"><circle cx="12" cy="12" r="10"/></svg>Gửi yêu cầu MoMo cho thu ngân';
+    }
+  }
+}
+
+function showMomoQrModal(qrUrl, amount) {
+  document.getElementById('momo-qr-img').src = qrUrl;
+  document.getElementById('momo-qr-amount').textContent = formatCurrency(amount);
+  document.getElementById('momo-qr-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeMomoQrModal() {
+  document.getElementById('momo-qr-modal').classList.add('hidden');
+  document.body.style.overflow = '';
 }
 
 async function loadTable() {

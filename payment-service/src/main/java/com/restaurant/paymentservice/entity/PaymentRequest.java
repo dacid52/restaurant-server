@@ -31,6 +31,12 @@ public class PaymentRequest {
     @Column(length = 20)
     private String status = "waiting";
 
+    @Column(name = "payment_method", length = 20, nullable = false)
+    private String paymentMethod = "cash";
+
+    @Column(name = "momo_trans_id", length = 100)
+    private String momoTransId;
+
     @PrePersist
     public void prePersist() {
         if (this.requestTime == null) {

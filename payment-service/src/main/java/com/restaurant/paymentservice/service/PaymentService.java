@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -23,18 +24,19 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final OrderClient orderClient;
     private final SocketService socketService;
+    private final MomoService momoService;
 
     public List<Map<String, Object>> getWaitingPayments() {
         List<Map<String, Object>> requests = paymentRequestRepository.getWaitingPaymentsWithTableKey();
         Map<String, Map<String, Object>> sessionMap = new HashMap<>();
 
         for (Map<String, Object> req : requests) {
-            Integer tableId = (Integer) req.get("table_id");
-            String tableKey = (String) req.get("table_key");
+            Integer tableId = toInteger(req.get("table_id"));
+            String tableKey = req.get("table_key") != null ? String.valueOf(req.get("table_key")) : null;
             String sessionKey = tableId + "_" + (tableKey != null ? tableKey : "no_key");
 
             if (!sessionMap.containsKey(sessionKey)) {
-                Integer orderCount = tableKey != null
+                Integer orderCount = (tableId != null && tableKey != null)
                         ? paymentRequestRepository.countUnpaidOrdersForSession(tableId, tableKey)
                         : 1;
 
@@ -51,25 +53,50 @@ public class PaymentService {
                 BigDecimal existingTotal = (BigDecimal) existing.get("total");
                 existing.put("total", existingTotal.add(currentTotal));
 
-                LocalDateTime currentRequestTime = (LocalDateTime) req.get("request_time");
-                LocalDateTime existingRequestTime = (LocalDateTime) existing.get("request_time");
+                LocalDateTime currentRequestTime = toLocalDateTime(req.get("request_time"));
+                LocalDateTime existingRequestTime = toLocalDateTime(existing.get("request_time"));
                 if (currentRequestTime.isBefore(existingRequestTime)) {
                     existing.put("request_time", currentRequestTime);
                 }
+
+                // Nếu bất kỳ đơn nào dùng MoMo → ưu tiên hiển thị MoMo cho session
+                String currentMethod = (String) req.get("payment_method");
+                if ("momo".equals(currentMethod)) {
+                    existing.put("payment_method", "momo");
+                    if (req.get("momo_trans_id") != null) {
+                        existing.put("momo_trans_id", req.get("momo_trans_id"));
+                    }
+                }
             }
         }
+        log.info("📋 Waiting payments grouped: {} rows -> {} sessions", requests.size(), sessionMap.size());
         return new ArrayList<>(sessionMap.values());
     }
 
+    private Integer toInteger(Object value) {
+        if (value == null) return null;
+        if (value instanceof Number n) return n.intValue();
+        return Integer.parseInt(String.valueOf(value));
+    }
+
+    private LocalDateTime toLocalDateTime(Object value) {
+        if (value == null) return LocalDateTime.now();
+        if (value instanceof LocalDateTime ldt) return ldt;
+        if (value instanceof Timestamp ts) return ts.toLocalDateTime();
+        return LocalDateTime.parse(String.valueOf(value).replace(" ", "T"));
+    }
+
     @Transactional
-    public void createPaymentRequest(Integer orderId, Integer tableId, String tableKey, BigDecimal amount) {
+    public void createPaymentRequest(Integer orderId, Integer tableId, String tableKey, BigDecimal amount, String paymentMethod) {
         log.info("💾 Creating payment request - Order: {}, Table: {}, Amount: {}", orderId, tableId, amount);
+        String normalizedMethod = "momo".equalsIgnoreCase(paymentMethod) ? "momo" : "cash";
 
         Optional<PaymentRequest> existingOpt = paymentRequestRepository.findByOrderIdAndStatus(orderId, "waiting");
         if (existingOpt.isPresent()) {
             PaymentRequest existing = existingOpt.get();
             log.info("📝 Updating existing payment request - Old amount: {}, New amount: {}", existing.getTotal(), amount);
             existing.setTotal(amount);
+            existing.setPaymentMethod(normalizedMethod);
             existing.setRequestTime(LocalDateTime.now());
             paymentRequestRepository.save(existing);
         } else {
@@ -78,6 +105,7 @@ public class PaymentService {
             newRequest.setTableId(tableId);
             newRequest.setTotal(amount);
             newRequest.setStatus("waiting");
+            newRequest.setPaymentMethod(normalizedMethod);
             paymentRequestRepository.save(newRequest);
             log.info("✨ New payment request saved - ID: {}, Amount: {}", newRequest.getId(), newRequest.getTotal());
         }
@@ -87,6 +115,7 @@ public class PaymentService {
         payload.put("table_id", tableId);
         payload.put("table_key", tableKey);
         payload.put("amount", amount);
+        payload.put("payment_method", normalizedMethod);
 
         log.info("📤 Broadcasting webhook payload: {}", payload);
         socketService.emitPaymentRequest(payload);
@@ -151,7 +180,9 @@ public class PaymentService {
             Payment payment = new Payment();
             payment.setOrderId(paymentRequest.getOrderId());
             payment.setAmount(paymentRequest.getTotal());
-            payment.setMethod("cash");
+            // Lấy method từ payment_request (cash hoặc momo)
+            String method = paymentRequest.getPaymentMethod() != null ? paymentRequest.getPaymentMethod() : "cash";
+            payment.setMethod(method);
             paymentRepository.save(payment);
 
             sessionTotal = sessionTotal.add(paymentRequest.getTotal());
@@ -195,5 +226,81 @@ public class PaymentService {
 
     public List<Map<String, Object>> getPaymentHistory() {
         return paymentRepository.getPaymentHistory();
+    }
+
+    // ---------------------------------------------------------------
+    // MoMo payment methods
+    // ---------------------------------------------------------------
+
+    /**
+     * Tạo link thanh toán MoMo sandbox.
+     * Trả về {payUrl, deeplink, qrCodeUrl, ...} từ MoMo API.
+     */
+    public Map<String, Object> createMomoPayment(Integer orderId, Integer tableId, String tableKey, BigDecimal amount) {
+        try {
+            // Chỉ tạo link MoMo. Payment request đã được tạo ở luồng request-payment.
+            Map<String, Object> momoResponse = momoService.createPayment(orderId, tableId, tableKey, amount);
+            int resultCode = ((Number) momoResponse.getOrDefault("resultCode", -1)).intValue();
+            if (resultCode != 0) {
+                String message = (String) momoResponse.getOrDefault("message", "Lỗi tạo thanh toán MoMo");
+                throw new RuntimeException("MoMo API lỗi: " + message);
+            }
+            return momoResponse;
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("❌ Lỗi gọi MoMo API: {}", e.getMessage(), e);
+            throw new RuntimeException("Không thể kết nối MoMo: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Cập nhật momo_trans_id sau khi IPN về (khách đã quét QR thành công).
+     */
+    @Transactional
+    public void updateMomoTransId(Integer orderId, String transId) {
+        paymentRequestRepository.findByOrderIdAndStatus(orderId, "waiting").ifPresent(pr -> {
+            pr.setMomoTransId(transId);
+            paymentRequestRepository.save(pr);
+            log.info("✅ Updated momo_trans_id for order {}: {}", orderId, transId);
+        });
+    }
+
+    /**
+     * Xác nhận thanh toán MoMo thành công và hoàn tất thanh toán phiên bàn.
+     */
+    @Transactional
+    public Map<String, Object> confirmMomoPayment(Integer orderId, Integer tableId,
+                                                   String tableKey, String transId,
+                                                   BigDecimal amount) {
+        log.info("💜 Confirm MoMo payment - Order:{}, Table:{}, TransId:{}", orderId, tableId, transId);
+
+        PaymentRequest pr = paymentRequestRepository.findByOrderIdAndStatus(orderId, "waiting")
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu thanh toán MoMo đang chờ"));
+
+        pr.setPaymentMethod("momo");
+        if (transId != null && !transId.isBlank()) {
+            pr.setMomoTransId(transId);
+        }
+        paymentRequestRepository.save(pr);
+
+        try {
+            Map<String, Object> result = processCashPayment(orderId, tableId, tableKey, null);
+            result.put("payment_method", "momo");
+            result.put("momo_trans_id", pr.getMomoTransId());
+            result.put("message", "Thanh toán MoMo thành công, bàn đã được đóng");
+            return result;
+        } catch (RuntimeException e) {
+            String msg = e.getMessage() != null ? e.getMessage() : "";
+            if (msg.contains("đã được thanh toán")) {
+                return new HashMap<>(Map.of(
+                        "success", true,
+                        "message", "Giao dịch MoMo đã được xác nhận trước đó",
+                        "payment_method", "momo",
+                        "momo_trans_id", pr.getMomoTransId()
+                ));
+            }
+            throw e;
+        }
     }
 }

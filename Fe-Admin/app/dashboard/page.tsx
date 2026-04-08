@@ -8,6 +8,7 @@ import {
   CalendarCheck,
   RefreshCw,
   TrendingUp,
+  Download,
 } from "lucide-react";
 import {
   Line,
@@ -17,7 +18,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -34,12 +34,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import * as XLSX from "xlsx";
 import api from "@/lib/axios";
 
-// Types
 interface Order {
   id: number;
   table_id: number;
@@ -57,7 +66,6 @@ interface Order {
 interface Food {
   id: number;
   name: string;
-  image: string;
 }
 
 interface TableData {
@@ -74,7 +82,7 @@ interface Payment {
 
 interface KPIData {
   totalRevenue: number;
-  todayOrders: number;
+  periodOrders: number;
   occupiedTables: number;
   availableTables: number;
 }
@@ -95,16 +103,20 @@ interface OrderStatusCount {
   completed: number;
 }
 
-// Helper functions
+type PeriodType = "day" | "week" | "month" | "year";
+
+const PERIOD_LABEL: Record<PeriodType, string> = {
+  day: "Ngày",
+  week: "Tuần",
+  month: "Tháng",
+  year: "Năm",
+};
+
 const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
   }).format(value);
-};
-
-const formatDate = (dateString: string): string => {
-  return new Date(dateString).toLocaleDateString("vi-VN");
 };
 
 const isToday = (dateString: string): boolean => {
@@ -117,55 +129,143 @@ const isToday = (dateString: string): boolean => {
   );
 };
 
-// Process data functions
-const calculateKPIs = (
-  orders: Order[],
-  tables: TableData[],
-  payments: Payment[]
-): KPIData => {
-  const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
-  const todayOrders = orders.filter((o) => isToday(o.order_time)).length;
-  const occupiedTables = tables.filter((t) => t.status === "Đang sử dụng").length;
-  const availableTables = tables.filter((t) => t.status === "Trống").length;
-
-  return { totalRevenue, todayOrders, occupiedTables, availableTables };
+const startOfDay = (date: Date): Date => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
 };
 
-const calculateRevenueByDay = (payments: Payment[]): RevenueData[] => {
-  const revenueMap = new Map<string, number>();
+const startOfWeek = (date: Date): Date => {
+  const d = startOfDay(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d;
+};
+
+const startOfMonth = (date: Date): Date => new Date(date.getFullYear(), date.getMonth(), 1);
+const startOfYear = (date: Date): Date => new Date(date.getFullYear(), 0, 1);
+
+const getPeriodRangeStart = (periodType: PeriodType, now: Date): Date => {
+  const cursor = new Date(now);
+  switch (periodType) {
+    case "day":
+      cursor.setDate(cursor.getDate() - 6);
+      return startOfDay(cursor);
+    case "week":
+      cursor.setDate(cursor.getDate() - 6 * 7);
+      return startOfWeek(cursor);
+    case "month":
+      return new Date(cursor.getFullYear(), cursor.getMonth() - 11, 1);
+    case "year":
+      return new Date(cursor.getFullYear() - 4, 0, 1);
+  }
+};
+
+const getIsoWeek = (date: Date): { week: number; year: number } => {
+  const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNr = target.getUTCDay() || 7;
+  target.setUTCDate(target.getUTCDate() + 4 - dayNr);
+  const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((target.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return { week: weekNo, year: target.getUTCFullYear() };
+};
+
+const getBucketStart = (date: Date, periodType: PeriodType): Date => {
+  switch (periodType) {
+    case "day":
+      return startOfDay(date);
+    case "week":
+      return startOfWeek(date);
+    case "month":
+      return startOfMonth(date);
+    case "year":
+      return startOfYear(date);
+  }
+};
+
+const formatBucketLabel = (date: Date, periodType: PeriodType): string => {
+  switch (periodType) {
+    case "day":
+      return date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+    case "week": {
+      const iso = getIsoWeek(date);
+      return `T${iso.week}/${iso.year}`;
+    }
+    case "month":
+      return `${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`;
+    case "year":
+      return String(date.getFullYear());
+  }
+};
+
+const calculateRevenueByPeriod = (payments: Payment[], periodType: PeriodType): RevenueData[] => {
+  const now = new Date();
+  const rangeStart = getPeriodRangeStart(periodType, now);
+  const bucketMap = new Map<number, number>();
 
   payments.forEach((payment) => {
-    const date = formatDate(payment.paid_at);
-    revenueMap.set(date, (revenueMap.get(date) || 0) + payment.amount);
+    const paidAt = new Date(payment.paid_at);
+    if (paidAt < rangeStart) return;
+    const bucket = getBucketStart(paidAt, periodType).getTime();
+    bucketMap.set(bucket, (bucketMap.get(bucket) || 0) + payment.amount);
   });
 
-  return Array.from(revenueMap.entries())
-    .map(([date, revenue]) => ({ date, revenue }))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(-7);
+  return Array.from(bucketMap.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([bucket, revenue]) => ({
+      date: formatBucketLabel(new Date(bucket), periodType),
+      revenue,
+    }));
 };
 
-const calculateTopFoods = (orders: Order[], foods: Food[]): TopFoodData[] => {
+const calculateTopFoodsByPeriod = (
+  orders: Order[],
+  foods: Food[],
+  periodType: PeriodType
+): TopFoodData[] => {
+  const now = new Date();
+  const rangeStart = getPeriodRangeStart(periodType, now);
   const foodQuantityMap = new Map<number, number>();
 
-  orders.forEach((order) => {
-    order.details?.forEach((detail) => {
-      foodQuantityMap.set(
-        detail.food_id,
-        (foodQuantityMap.get(detail.food_id) || 0) + detail.quantity
-      );
+  orders
+    .filter((order) => new Date(order.order_time) >= rangeStart)
+    .forEach((order) => {
+      order.details?.forEach((detail) => {
+        foodQuantityMap.set(
+          detail.food_id,
+          (foodQuantityMap.get(detail.food_id) || 0) + detail.quantity
+        );
+      });
     });
-  });
 
   const foodMap = new Map(foods.map((f) => [f.id, f.name]));
 
   return Array.from(foodQuantityMap.entries())
     .map(([foodId, quantity]) => ({
-      name: foodMap.get(foodId) || `Món ${foodId}`,
+      name: foodMap.get(foodId) || `Mon ${foodId}`,
       quantity,
     }))
     .sort((a, b) => b.quantity - a.quantity)
-    .slice(0, 5);
+    .slice(0, 8);
+};
+
+const calculateKPIs = (
+  orders: Order[],
+  tables: TableData[],
+  payments: Payment[],
+  periodType: PeriodType
+): KPIData => {
+  const rangeStart = getPeriodRangeStart(periodType, new Date());
+  const totalRevenue = payments
+    .filter((p) => new Date(p.paid_at) >= rangeStart)
+    .reduce((sum, p) => sum + p.amount, 0);
+
+  const periodOrders = orders.filter((o) => new Date(o.order_time) >= rangeStart).length;
+  const occupiedTables = tables.filter((t) => t.status === "Đang sử dụng").length;
+  const availableTables = tables.filter((t) => t.status === "Trống").length;
+
+  return { totalRevenue, periodOrders, occupiedTables, availableTables };
 };
 
 const calculateOrderStatus = (orders: Order[]): OrderStatusCount => {
@@ -182,7 +282,6 @@ const getRecentOrders = (orders: Order[]): Order[] => {
     .slice(0, 5);
 };
 
-// Chart configs
 const revenueChartConfig = {
   revenue: {
     label: "Doanh thu",
@@ -197,7 +296,6 @@ const topFoodsChartConfig = {
   },
 } satisfies ChartConfig;
 
-// Status badge component
 const StatusBadge = ({ status }: { status: string }) => {
   const getStatusStyle = () => {
     switch (status) {
@@ -219,7 +317,6 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-// Loading skeleton component
 const DashboardSkeleton = () => (
   <div className="flex flex-col gap-6">
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -258,12 +355,24 @@ const DashboardSkeleton = () => (
 );
 
 export default function AdminDashboard() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+
+  const [periodType, setPeriodType] = useState<PeriodType>("day");
+  const [exportRevenue, setExportRevenue] = useState(true);
+  const [exportTopFoods, setExportTopFoods] = useState(true);
+  const [exporting, setExporting] = useState(false);
+
+  const [rawOrders, setRawOrders] = useState<Order[]>([]);
+  const [rawFoods, setRawFoods] = useState<Food[]>([]);
+  const [rawTables, setRawTables] = useState<TableData[]>([]);
+  const [rawPayments, setRawPayments] = useState<Payment[]>([]);
+
   const [kpis, setKpis] = useState<KPIData>({
     totalRevenue: 0,
-    todayOrders: 0,
+    periodOrders: 0,
     occupiedTables: 0,
     availableTables: 0,
   });
@@ -275,6 +384,24 @@ export default function AdminDashboard() {
     cooking: 0,
     completed: 0,
   });
+
+  const recalculateDashboard = useCallback(
+    (orders: Order[], foods: Food[], tables: TableData[], payments: Payment[], selectedPeriod: PeriodType) => {
+      const enrichedOrders = orders.map((o) => ({
+        ...o,
+        tableName:
+          tables.find((t) => t.id === o.table_id)?.name ||
+          (o.table_key ? `Mã ${o.table_key.substring(0, 8)}` : `Bàn ${o.table_id}`),
+      }));
+
+      setKpis(calculateKPIs(enrichedOrders, tables, payments, selectedPeriod));
+      setRevenueData(calculateRevenueByPeriod(payments, selectedPeriod));
+      setTopFoods(calculateTopFoodsByPeriod(enrichedOrders, foods, selectedPeriod));
+      setRecentOrders(getRecentOrders(enrichedOrders));
+      setOrderStatus(calculateOrderStatus(enrichedOrders));
+    },
+    []
+  );
 
   const fetchData = useCallback(async () => {
     try {
@@ -317,35 +444,93 @@ export default function AdminDashboard() {
         setWarning(`Một số dữ liệu đang tạm thời không tải được: ${failedSources.join(" | ")}`);
       }
 
-      const enrichedOrders = orders.map(o => ({
-        ...o,
-        tableName: tables.find(t => t.id === o.table_id)?.name || (o.table_key ? `Mã ${o.table_key.substring(0, 8)}` : `Bàn ${o.table_id}`)
-      }));
+      setRawOrders(orders);
+      setRawFoods(foods);
+      setRawTables(tables);
+      setRawPayments(payments);
 
-      setKpis(calculateKPIs(enrichedOrders, tables, payments));
-      setRevenueData(calculateRevenueByDay(payments));
-      setTopFoods(calculateTopFoods(enrichedOrders, foods));
-      setRecentOrders(getRecentOrders(enrichedOrders));
-      setOrderStatus(calculateOrderStatus(enrichedOrders));
+      recalculateDashboard(orders, foods, tables, payments, periodType);
     } catch (err) {
       setError("Không thể tải dữ liệu. Vui lòng thử lại.");
       console.error("Dashboard fetch error:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [periodType, recalculateDashboard]);
 
   useEffect(() => {
     fetchData();
-
-    // Auto refresh every 30 seconds
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  if (loading) {
-    return <DashboardSkeleton />;
-  }
+  useEffect(() => {
+    recalculateDashboard(rawOrders, rawFoods, rawTables, rawPayments, periodType);
+  }, [rawOrders, rawFoods, rawTables, rawPayments, periodType, recalculateDashboard]);
+
+  const handleExportExcel = async () => {
+    if (!exportRevenue && !exportTopFoods) {
+      toast({
+        title: "Thiếu dữ liệu xuất",
+        description: "Vui lòng chọn ít nhất 1 mục: Doanh thu hoặc Top món bán chạy.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setExporting(true);
+      const workbook = XLSX.utils.book_new();
+
+      const summaryRows = [
+        ["Báo cáo dashboard"],
+        ["Kỳ tổng hợp", PERIOD_LABEL[periodType]],
+        ["Tạo lúc", new Date().toLocaleString("vi-VN")],
+        [],
+        ["Tổng doanh thu", kpis.totalRevenue],
+        ["Số đơn trong kỳ", kpis.periodOrders],
+      ];
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
+      XLSX.utils.book_append_sheet(workbook, summarySheet, "Tong quan");
+
+      if (exportRevenue) {
+        const rows = revenueData.map((item) => ({
+          Ky: item.date,
+          DoanhThu: item.revenue,
+        }));
+        const sheet = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Ky: "", DoanhThu: 0 }]);
+        XLSX.utils.book_append_sheet(workbook, sheet, "Doanh thu");
+      }
+
+      if (exportTopFoods) {
+        const rows = topFoods.map((item) => ({
+          Mon: item.name,
+          SoLuongBan: item.quantity,
+        }));
+        const sheet = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Mon: "", SoLuongBan: 0 }]);
+        XLSX.utils.book_append_sheet(workbook, sheet, "Top mon");
+      }
+
+      const fileName = `dashboard-${periodType}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+
+      toast({
+        title: "Xuất Excel thành công",
+        description: `Đã tạo file ${fileName}`,
+      });
+    } catch (err) {
+      console.error("Export dashboard excel failed:", err);
+      toast({
+        title: "Xuất Excel thất bại",
+        description: "Không thể tạo file báo cáo dashboard.",
+        variant: "destructive",
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  if (loading) return <DashboardSkeleton />;
 
   if (error) {
     return (
@@ -367,26 +552,63 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* KPI Cards */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Bộ lọc và Xuất Excel</CardTitle>
+          <CardDescription>Chọn kỳ báo cáo theo ngày / tuần / tháng / năm và dữ liệu muốn xuất.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="grid gap-2">
+            <Label>Kỳ báo cáo</Label>
+            <Select value={periodType} onValueChange={(v) => setPeriodType(v as PeriodType)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Chọn kỳ" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="day">Theo ngày</SelectItem>
+                <SelectItem value="week">Theo tuần</SelectItem>
+                <SelectItem value="month">Theo tháng</SelectItem>
+                <SelectItem value="year">Theo năm</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="flex items-center gap-2">
+              <Checkbox checked={exportRevenue} onCheckedChange={(v) => setExportRevenue(v === true)} id="cb-revenue" />
+              <Label htmlFor="cb-revenue">Doanh thu</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox checked={exportTopFoods} onCheckedChange={(v) => setExportTopFoods(v === true)} id="cb-top-foods" />
+              <Label htmlFor="cb-top-foods">Biểu đồ món bán chạy</Label>
+            </div>
+            <Button onClick={handleExportExcel} disabled={exporting}>
+              <Download className="mr-2 h-4 w-4" />
+              {exporting ? "Đang xuất..." : "Xuất Excel"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Tổng doanh thu</CardTitle>
+            <CardTitle className="text-sm font-medium">Tổng doanh thu ({PERIOD_LABEL[periodType]})</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(kpis.totalRevenue)}</div>
-            <p className="text-xs text-muted-foreground">Tổng thu từ thanh toán</p>
+            <p className="text-xs text-muted-foreground">Theo bộ lọc đang chọn</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Đơn hôm nay</CardTitle>
+            <CardTitle className="text-sm font-medium">Đơn trong kỳ</CardTitle>
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{kpis.todayOrders}</div>
-            <p className="text-xs text-muted-foreground">Số đơn hàng trong ngày</p>
+            <div className="text-2xl font-bold">{kpis.periodOrders}</div>
+            <p className="text-xs text-muted-foreground">Theo bộ lọc đang chọn</p>
           </CardContent>
         </Card>
         <Card>
@@ -411,28 +633,20 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Charts */}
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Revenue Line Chart */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
-              Doanh thu theo ngày
+              Doanh thu theo {PERIOD_LABEL[periodType].toLowerCase()}
             </CardTitle>
-            <CardDescription>7 ngày gần nhất</CardDescription>
+            <CardDescription>Dữ liệu tổng hợp theo bộ lọc đang chọn</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={revenueChartConfig} className="h-[300px] w-full">
               <LineChart data={revenueData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis
-                  dataKey="date"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  className="text-xs"
-                />
+                <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
                 <YAxis
                   tickLine={false}
                   axisLine={false}
@@ -440,13 +654,7 @@ export default function AdminDashboard() {
                   tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
                   className="text-xs"
                 />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      formatter={(value) => formatCurrency(Number(value))}
-                    />
-                  }
-                />
+                <ChartTooltip content={<ChartTooltipContent formatter={(value) => formatCurrency(Number(value))} />} />
                 <Line
                   type="monotone"
                   dataKey="revenue"
@@ -460,14 +668,13 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Top Foods Bar Chart */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <UtensilsCrossed className="h-5 w-5" />
-              Top món bán chạy
+              Top món bán chạy theo {PERIOD_LABEL[periodType].toLowerCase()}
             </CardTitle>
-            <CardDescription>Top 5 món được gọi nhiều nhất</CardDescription>
+            <CardDescription>Top món theo số lượng gọi trong kỳ</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={topFoodsChartConfig} className="h-[300px] w-full">
@@ -480,7 +687,7 @@ export default function AdminDashboard() {
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
-                  width={100}
+                  width={120}
                   className="text-xs"
                 />
                 <ChartTooltip content={<ChartTooltipContent />} />
@@ -491,9 +698,7 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Recent Orders and Order Status */}
       <div className="grid gap-4 md:grid-cols-3">
-        {/* Recent Orders Table */}
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>Đơn hàng gần nhất</CardTitle>
@@ -535,7 +740,6 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Order Status Summary */}
         <Card>
           <CardHeader>
             <CardTitle>Trạng thái đơn hàng</CardTitle>
@@ -573,7 +777,6 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Auto refresh indicator */}
       <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
         <RefreshCw className="h-3 w-3" />
         <span>Tự động cập nhật mỗi 30 giây</span>

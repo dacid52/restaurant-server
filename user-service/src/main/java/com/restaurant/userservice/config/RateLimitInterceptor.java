@@ -71,32 +71,35 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     }
 
     private String resolveClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            // Chỉ lấy IP đầu tiên (client thực sự) để tránh header giả mạo
-            return forwarded.split(",")[0].trim();
-        }
+        // Chỉ tin tưởng X-Forwarded-For nếu request đến từ gateway (trusted proxy = 127.0.0.1 / ::1)
+        // Tránh attacker tự set header X-Forwarded-For để bypass rate limit
+        String remoteAddr = request.getRemoteAddr();
+        boolean fromTrustedProxy = "127.0.0.1".equals(remoteAddr) || "::1".equals(remoteAddr) || "0:0:0:0:0:0:0:1".equals(remoteAddr);
 
-        // RFC 7239: Forwarded: for=203.0.113.60;proto=http;by=203.0.113.43
-        String standardForwarded = request.getHeader("Forwarded");
-        if (standardForwarded != null && !standardForwarded.isBlank()) {
-            for (String part : standardForwarded.split(";")) {
-                String trimmed = part.trim();
-                if (trimmed.toLowerCase().startsWith("for=")) {
-                    String value = trimmed.substring(4).trim();
-                    value = value.replace("\"", "");
-                    if (!value.isBlank()) {
-                        return value;
+        if (fromTrustedProxy) {
+            String forwarded = request.getHeader("X-Forwarded-For");
+            if (forwarded != null && !forwarded.isBlank()) {
+                return forwarded.split(",")[0].trim();
+            }
+
+            // RFC 7239: Forwarded: for=203.0.113.60
+            String standardForwarded = request.getHeader("Forwarded");
+            if (standardForwarded != null && !standardForwarded.isBlank()) {
+                for (String part : standardForwarded.split(";")) {
+                    String trimmed = part.trim();
+                    if (trimmed.toLowerCase().startsWith("for=")) {
+                        String value = trimmed.substring(4).trim().replace("\"", "");
+                        if (!value.isBlank()) return value;
                     }
                 }
             }
+
+            String realIp = request.getHeader("X-Real-IP");
+            if (realIp != null && !realIp.isBlank()) {
+                return realIp.trim();
+            }
         }
 
-        String realIp = request.getHeader("X-Real-IP");
-        if (realIp != null && !realIp.isBlank()) {
-            return realIp.trim();
-        }
-
-        return request.getRemoteAddr();
+        return remoteAddr;
     }
 }

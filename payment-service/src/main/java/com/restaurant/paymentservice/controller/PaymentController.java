@@ -1,5 +1,6 @@
 package com.restaurant.paymentservice.controller;
 
+import com.restaurant.paymentservice.service.MomoService;
 import com.restaurant.paymentservice.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,19 +18,28 @@ import java.util.Map;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final MomoService momoService;
 
     @GetMapping("/waiting")
     public ResponseEntity<List<Map<String, Object>>> getWaitingPayments() {
-        return ResponseEntity.ok(paymentService.getWaitingPayments());
+        try {
+            List<Map<String, Object>> rows = paymentService.getWaitingPayments();
+            log.info("📥 GET /payments/waiting -> {} sessions", rows.size());
+            return ResponseEntity.ok(rows);
+        } catch (Exception e) {
+            log.error("❌ GET /payments/waiting error: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     @PostMapping("/request")
     public ResponseEntity<Map<String, Boolean>> createPaymentRequest(@RequestBody Map<String, Object> payload) {
         log.info("📥 Nhận payment request: {}", payload);
         
-        Integer orderId = (Integer) payload.get("order_id");
-        Integer tableId = (Integer) payload.get("table_id");
+        Integer orderId = ((Number) payload.get("order_id")).intValue();
+        Integer tableId = ((Number) payload.get("table_id")).intValue();
         String tableKey = (String) payload.get("table_key");
+        String paymentMethod = String.valueOf(payload.getOrDefault("payment_method", "cash"));
         Object amountObj = payload.get("amount");
         
         log.info("📊 Parsed data - Order: {}, Table: {}, TableKey: {}, Amount: {} (type: {})", 
@@ -56,7 +66,7 @@ public class PaymentController {
         
         log.info("✅ Amount successfully converted to BigDecimal: {} (value: {})", amount, amount.toPlainString());
 
-        paymentService.createPaymentRequest(orderId, tableId, tableKey, amount);
+        paymentService.createPaymentRequest(orderId, tableId, tableKey, amount, paymentMethod);
         return ResponseEntity.ok(Map.of("success", true));
     }
 
@@ -113,5 +123,93 @@ public class PaymentController {
     @GetMapping("/history")
     public ResponseEntity<List<Map<String, Object>>> getPaymentHistory() {
         return ResponseEntity.ok(paymentService.getPaymentHistory());
+    }
+
+    // ---------------------------------------------------------------
+    // MoMo endpoints
+    // ---------------------------------------------------------------
+
+    /**
+     * Khách gọi để lấy payUrl → redirect sang trang thanh toán MoMo sandbox.
+     */
+    @PostMapping("/momo/create")
+    public ResponseEntity<Map<String, Object>> createMomoPayment(@RequestBody Map<String, Object> payload) {
+        log.info("📥 MoMo create request: {}", payload);
+        try {
+            Integer orderId  = ((Number) payload.get("order_id")).intValue();
+            Integer tableId  = ((Number) payload.get("table_id")).intValue();
+            String  tableKey = (String)  payload.get("table_key");
+            BigDecimal amount = new BigDecimal(payload.get("amount").toString());
+
+            Map<String, Object> result = paymentService.createMomoPayment(orderId, tableId, tableKey, amount);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("❌ MoMo create error: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    /**
+     * MoMo gọi IPN sau khi khách quét QR và thanh toán thành công.
+     * Cập nhật momo_trans_id để thu ngân thấy mã giao dịch.
+     */
+    @PostMapping("/momo/ipn")
+    public ResponseEntity<String> momoIpnCallback(@RequestBody Map<String, Object> payload) {
+        log.info("📨 MoMo IPN callback: {}", payload);
+        // Xác thực chữ ký HMAC-SHA256 — từ chối nếu bị giả mạo
+        if (!momoService.verifyIpnSignature(payload)) {
+            log.warn("⚠️ MoMo IPN signature mismatch — request bị từ chối");
+            return ResponseEntity.badRequest().body("Invalid signature");
+        }
+        try {
+            int resultCode = ((Number) payload.getOrDefault("resultCode", -1)).intValue();
+            if (resultCode == 0) {
+                // momoOrderId = "MOMO_<orderId>_<timestamp>"
+                String momoOrderId = (String) payload.getOrDefault("orderId", "");
+                String transId = String.valueOf(payload.getOrDefault("transId", ""));
+                BigDecimal amount = new BigDecimal(String.valueOf(payload.getOrDefault("amount", "0")));
+                String[] parts = momoOrderId.split("_");
+                if (parts.length >= 2) {
+                    try {
+                        Integer orderId = Integer.parseInt(parts[1]);
+                        paymentService.confirmMomoPayment(orderId, null, null, transId, amount);
+                        log.info("✅ IPN: payment completed for order={} via transId={}", orderId, transId);
+                    } catch (NumberFormatException e) {
+                        log.warn("⚠️ Cannot parse orderId from momoOrderId: {}", momoOrderId);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("❌ IPN error: {}", e.getMessage(), e);
+        }
+        return ResponseEntity.ok("0");
+    }
+
+    /**
+     * Frontend gọi sau khi MoMo redirect về payment-return.html thành công.
+     * Hoàn tất thanh toán MoMo và đóng phiên bàn.
+     */
+    @PostMapping("/momo/notify-cashier")
+    public ResponseEntity<Map<String, Object>> momoNotifyCashier(@RequestBody Map<String, Object> payload) {
+        log.info("📥 MoMo notify-cashier: {}", payload);
+        try {
+            int resultCode = ((Number) payload.getOrDefault("result_code", -1)).intValue();
+            if (resultCode != 0) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("success", false, "error", "Thanh toán MoMo không thành công (resultCode=" + resultCode + ")"));
+            }
+
+            Integer orderId  = ((Number) payload.get("order_id")).intValue();
+            Integer tableId  = ((Number) payload.get("table_id")).intValue();
+            String  tableKey = (String)  payload.get("table_key");
+            String  transId  = String.valueOf(payload.getOrDefault("trans_id", ""));
+            BigDecimal amount = new BigDecimal(payload.get("amount").toString());
+
+            Map<String, Object> result = paymentService.confirmMomoPayment(orderId, tableId, tableKey, transId, amount);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("❌ MoMo notify error: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
     }
 }

@@ -12,6 +12,7 @@ import {
     RefreshCw,
     PackagePlus,
     PackageMinus,
+    Download,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,6 +74,7 @@ export default function InventoryPage() {
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState("all");
+    const [isExporting, setIsExporting] = useState(false);
 
     // Dialog states
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -244,6 +246,44 @@ export default function InventoryPage() {
         });
     };
 
+    const handleExportExcel = async () => {
+        try {
+            setIsExporting(true);
+            const res = await api.get("/inventory/ingredients/export", {
+                responseType: "blob",
+            });
+
+            const blob = new Blob([res.data], {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+
+            const disposition = res.headers["content-disposition"] as string | undefined;
+            const matched = disposition?.match(/filename=\"?([^\";]+)\"?/i);
+            link.download = matched?.[1] || `ton-kho-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+
+            toast({
+                title: "Thành công",
+                description: "Đã xuất file Excel tồn kho",
+            });
+        } catch (error) {
+            toast({
+                title: "Lỗi",
+                description: "Không thể xuất file Excel tồn kho",
+                variant: "destructive",
+            });
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     // Filter ingredients based on search and tab
     const filteredIngredients = ingredients.filter((item: Ingredient) => {
         const matchesSearch = item.name
@@ -329,6 +369,10 @@ export default function InventoryPage() {
                         </div>
                         <Button variant="outline" size="icon" onClick={handleRefresh}>
                             <RefreshCw className="size-4" />
+                        </Button>
+                        <Button variant="outline" onClick={handleExportExcel} disabled={isExporting}>
+                            <Download className="mr-2 size-4" />
+                            {isExporting ? "Đang xuất..." : "Xuất Excel"}
                         </Button>
                         <Button onClick={() => setIsAddOpen(true)}>
                             <Plus className="mr-2 size-4" />

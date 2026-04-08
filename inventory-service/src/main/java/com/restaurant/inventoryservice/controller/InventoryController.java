@@ -3,11 +3,14 @@ package com.restaurant.inventoryservice.controller;
 import com.restaurant.inventoryservice.entity.Ingredient;
 import com.restaurant.inventoryservice.service.InventoryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import org.springframework.lang.NonNull;
@@ -62,6 +65,16 @@ public class InventoryController {
     @GetMapping("/ingredients/low-stock")
     public ResponseEntity<List<Ingredient>> getLowStock() {
         return ResponseEntity.ok(inventoryService.getLowStock());
+    }
+
+    @GetMapping("/ingredients/export")
+    public ResponseEntity<byte[]> exportInventoryExcel() {
+        byte[] fileData = inventoryService.exportInventoryExcel();
+        String fileName = "ton-kho-" + LocalDate.now() + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(fileData);
     }
 
     // Endpoint for Feign Client from menu-service

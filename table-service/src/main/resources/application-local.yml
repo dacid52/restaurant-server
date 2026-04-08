@@ -6,13 +6,13 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: "huy211439@gmail.com"
-    password: "fbikwnsabgfjgorq"
+    username: ${MAIL_USERNAME:your-email@gmail.com}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
           auth: true
-          from: "huy211439@gmail.com"
+          from: ${MAIL_USERNAME:your-email@gmail.com}
           auth.mechanisms: LOGIN PLAIN
           starttls:
             enable: true

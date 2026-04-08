@@ -217,7 +217,9 @@ public class OrderService {
     }
 
     public List<OrderSessionSummaryDto> getAllSessionSummaries() {
-        List<Order> orders = getAllOrders();
+        // Chỉ lấy phiên còn hoạt động để tránh trộn lịch sử đã thanh toán vào tab Đang dùng bữa.
+        List<Order> orders = orderRepository.findByPaymentStatusNotOrderByOrderTimeAsc("paid");
+        enrichFoodNames(orders);
         Map<String, List<Order>> groupedOrders = orders.stream()
                 .filter(order -> order.getTableId() != null)
                 .collect(Collectors.groupingBy(order -> order.getTableId() + "_" + (order.getTableKey() != null ? order.getTableKey() : "no_key")));
@@ -572,8 +574,10 @@ public class OrderService {
     }
 
     @Transactional
-    public Map<String, Object> requestPayment(@NonNull Integer orderId, String tableKey) {
+    public Map<String, Object> requestPayment(@NonNull Integer orderId, String tableKey, String paymentMethod) {
         Order seedOrder = getOrderById(orderId);
+
+        String normalizedMethod = "momo".equalsIgnoreCase(paymentMethod) ? "momo" : "cash";
 
         if (seedOrder.getTableKey() == null || tableKey == null || !seedOrder.getTableKey().equals(tableKey)) {
             throw new RuntimeException("Phiên bàn không hợp lệ");
@@ -611,6 +615,7 @@ public class OrderService {
             req.put("table_id", order.getTableId());
             req.put("table_key", order.getTableKey());
             req.put("amount", order.getTotal() != null ? order.getTotal() : BigDecimal.ZERO);
+            req.put("payment_method", normalizedMethod);
 
             try {
                 paymentClient.requestPayment(req);
@@ -630,7 +635,7 @@ public class OrderService {
 
         return Map.of(
                 "success", true,
-                "message", "Đã gửi yêu cầu thanh toán",
+            "message", "Đã gửi yêu cầu thanh toán " + ("momo".equals(normalizedMethod) ? "MoMo" : "tiền mặt"),
                 "order_count", sessionOrders.size(),
                 "total_amount", sessionTotal
         );
@@ -708,5 +713,42 @@ public class OrderService {
 
         log.info("✅ Payment completed successfully - Table {} is now empty", tableId);
         return result;
+    }
+
+    /**
+     * Đánh dấu các đơn hàng chưa thanh toán của phiên là 'waiting'.
+     * Được gọi bởi payment-service sau khi khách thanh toán MoMo thành công
+     * (không gọi lại payment-service để tránh circular call).
+     */
+    @Transactional
+    public void markOrdersWaiting(@NonNull Integer orderId, String tableKey) {
+        Order seedOrder = getOrderById(orderId);
+
+        if (seedOrder.getTableKey() == null || tableKey == null || !seedOrder.getTableKey().equals(tableKey)) {
+            throw new RuntimeException("Phiên bàn không hợp lệ");
+        }
+
+        List<Order> unpaidOrders = orderRepository
+                .findByTableIdAndTableKeyAndPaymentStatusNotOrderByOrderTimeAsc(
+                        seedOrder.getTableId(), tableKey, "paid");
+
+        List<Integer> updatedIds = new ArrayList<>();
+        for (Order order : unpaidOrders) {
+            if ("unpaid".equals(order.getPaymentStatus())) {
+                order.setPaymentStatus("waiting");
+                orderRepository.save(order);
+                updatedIds.add(order.getId());
+            }
+        }
+
+        if (!updatedIds.isEmpty()) {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("table_id", seedOrder.getTableId());
+            payload.put("table_key", tableKey);
+            payload.put("payment_status", "waiting");
+            payload.put("order_ids", updatedIds);
+            socketService.emitOrderStatusUpdated(seedOrder.getTableId(), payload);
+            log.info("💜 Marked {} orders as waiting (MoMo) for table {}", updatedIds.size(), seedOrder.getTableId());
+        }
     }
 }

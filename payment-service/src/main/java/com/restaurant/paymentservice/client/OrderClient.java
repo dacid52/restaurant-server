@@ -20,4 +20,10 @@ public interface OrderClient {
             @RequestHeader("Authorization") String authHeader,
             @RequestBody Map<String, Object> payload
     );
+
+    @PostMapping("/api/orders/{id}/mark-waiting")
+    Map<String, Object> markWaiting(
+            @PathVariable("id") Integer orderId,
+            @RequestBody Map<String, String> payload
+    );
 }

@@ -6,3 +6,8 @@ spring:
 
 services:
   order: http://localhost:3003
+
+momo:
+  redirect-url-base: http://restaurant-server.site:3011/payment-return.html
+  ipn-url: http://restaurant-server.site:3008/api/payments/momo/ipn
+

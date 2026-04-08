@@ -3,335 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Káº¿t quáº£ thanh toĂ¡n - Restaurant</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%231a1a1a'/%3E%3Cpath d='M32 14l5.7 11.5L50 27.3l-9 8.8 2.1 12.4L32 42.3 20.9 48.5 23 36.1l-9-8.8 12.3-1.8L32 14z' fill='%23d4af37'/%3E%3C/svg%3E">
+    <title>Ket qua thanh toan MoMo - Nha hang Aurora</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
-            line-height: 1.6;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #a50064 0%, #d0006f 50%, #764ba2 100%);
+            color: #333; line-height: 1.6; min-height: 100vh;
+            display: flex; align-items: center; justify-content: center; padding: 20px;
         }
-
-        .payment-result-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 40px;
-            max-width: 500px;
-            width: 100%;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .container {
+            background: rgba(255,255,255,0.97); backdrop-filter: blur(20px);
+            border-radius: 20px; padding: 40px; max-width: 480px; width: 100%;
+            text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.15);
         }
-
-        .payment-icon {
-            font-size: 4rem;
-            margin-bottom: 20px;
-        }
-
-        .payment-icon.success {
-            color: #10ac84;
-        }
-
-        .payment-icon.error {
-            color: #ff6b6b;
-        }
-
-        .payment-icon.pending {
-            color: #ff9f43;
-        }
-
-        .payment-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-
-        .payment-title.success {
-            color: #10ac84;
-        }
-
-        .payment-title.error {
-            color: #ff6b6b;
-        }
-
-        .payment-title.pending {
-            color: #ff9f43;
-        }
-
-        .payment-message {
-            font-size: 1rem;
-            color: #666;
-            margin-bottom: 30px;
-            line-height: 1.6;
-        }
-
-        .payment-details {
-            background: rgba(102, 126, 234, 0.05);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 30px;
-            text-align: left;
-        }
-
-        .payment-detail-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 0.95rem;
-        }
-
-        .payment-detail-row:last-child {
-            margin-bottom: 0;
-            font-weight: 600;
-            font-size: 1rem;
-            padding-top: 8px;
-            border-top: 1px solid rgba(0, 0, 0, 0.1);
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #5a6268;
-            transform: translateY(-2px);
-        }
-
-        .loading {
-            display: none;
-            margin: 20px 0;
-        }
-
-        .spinner {
-            border: 3px solid rgba(102, 126, 234, 0.1);
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 16px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 768px) {
-            .payment-result-container {
-                padding: 30px 20px;
-                margin: 10px;
-            }
-
-            .payment-icon {
-                font-size: 3rem;
-            }
-
-            .payment-title {
-                font-size: 1.3rem;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-            }
-
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
-        }
+        .icon { font-size: 4rem; margin-bottom: 20px; }
+        .icon.success { color: #10ac84; } .icon.error { color: #ff6b6b; }
+        h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 12px; }
+        h1.success { color: #10ac84; } h1.error { color: #ff6b6b; }
+        .msg { font-size: 1rem; color: #666; margin-bottom: 24px; line-height: 1.6; }
+        .details { background: rgba(165,0,100,0.05); border-radius: 12px; padding: 18px 20px; margin-bottom: 28px; text-align: left; }
+        .detail-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; gap: 12px; }
+        .detail-row:last-child { margin-bottom: 0; font-weight: 600; font-size: 1rem; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.08); }
+        .detail-row span:last-child { text-align: right; }
+        .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        .btn { padding: 12px 22px; border: none; border-radius: 10px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.25s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: linear-gradient(135deg,#a50064,#d0006f); color: white; box-shadow: 0 4px 15px rgba(165,0,100,0.3); }
+        .btn-primary:hover { transform: translateY(-2px); }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; }
+        .momo-badge { display: inline-flex; align-items: center; gap: 6px; background: #a50064; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; margin-bottom: 16px; }
+        .spinner-wrap { margin: 30px 0; }
+        .spinner { border: 3px solid rgba(165,0,100,0.15); border-top: 3px solid #a50064; border-radius: 50%; width: 44px; height: 44px; animation: spin 1s linear infinite; margin: 0 auto 14px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width:480px) { .container { padding: 28px 18px; } h1 { font-size: 1.25rem; } .actions { flex-direction: column; } .btn { width: 100%; justify-content: center; } }
     </style>
 </head>
 <body>
-    <div class="payment-result-container">
-        <div id="loading" class="loading">
+    <div class="container">
+        <div id="loading" class="spinner-wrap">
             <div class="spinner"></div>
-            <p>Äang xá»­ lĂ½ káº¿t quáº£ thanh toĂ¡n...</p>
+            <p style="color:#666;">Dang xu ly ket qua thanh toan MoMo...</p>
         </div>
-
-        <div id="payment-result" style="display: none;">
-            <div id="payment-icon" class="payment-icon">
-                <i class="fas fa-check-circle"></i>
+        <div id="result" style="display:none;">
+            <div class="momo-badge"><i class="fas fa-wallet"></i> MoMo Sandbox</div>
+            <div id="icon" class="icon success"><i class="fas fa-check-circle"></i></div>
+            <h1 id="title" class="success">Thanh toan thanh cong!</h1>
+            <p id="msg" class="msg">Cam on ban da thanh toan qua MoMo. Thu ngan da duoc thong bao va se xac nhan don hang.</p>
+            <div id="details" class="details">
+                <div class="detail-row"><span>Ma don hang</span><span id="d-order">-</span></div>
+                <div class="detail-row"><span>Ma giao dich MoMo</span><span id="d-trans">-</span></div>
+                <div class="detail-row"><span>Thoi gian</span><span id="d-time">-</span></div>
+                <div class="detail-row"><span>So tien</span><span id="d-amount" style="color:#a50064;">-</span></div>
             </div>
-            
-            <h1 id="payment-title" class="payment-title">
-                Thanh toĂ¡n thĂ nh cĂ´ng!
-            </h1>
-            
-            <p id="payment-message" class="payment-message">
-                Cáº£m Æ¡n báº¡n Ä‘Ă£ thanh toĂ¡n. ÄÆ¡n hĂ ng cá»§a báº¡n Ä‘Ă£ Ä‘Æ°á»£c xĂ¡c nháº­n.
-            </p>
-
-            <div id="payment-details" class="payment-details">
-                <div class="payment-detail-row">
-                    <span>MĂ£ Ä‘Æ¡n hĂ ng:</span>
-                    <span id="order-id">-</span>
-                </div>
-                <div class="payment-detail-row">
-                    <span>MĂ£ giao dá»‹ch:</span>
-                    <span id="trans-id">-</span>
-                </div>
-                <div class="payment-detail-row">
-                    <span>Sá»‘ tiá»n:</span>
-                    <span id="amount">-</span>
-                </div>
-                <div class="payment-detail-row">
-                    <span>Thá»i gian:</span>
-                    <span id="payment-time">-</span>
-                </div>
-            </div>
-
-            <div class="action-buttons">
-                <a href="#" id="back-to-order" class="btn btn-primary">
-                    <i class="fas fa-arrow-left"></i>
-                    Quay láº¡i Ä‘Æ¡n hĂ ng
-                </a>
-                <button onclick="window.close()" class="btn btn-secondary">
-                    <i class="fas fa-times"></i>
-                    ÄĂ³ng cá»­a sá»•
-                </button>
+            <div class="actions">
+                <a href="/" id="back-link" class="btn btn-primary"><i class="fas fa-arrow-left"></i> Quay lai don hang</a>
+                <button onclick="window.close()" class="btn btn-secondary"><i class="fas fa-times"></i> Dong</button>
             </div>
         </div>
     </div>
-
     <script>
-        // Parse URL parameters
-        function getUrlParams() {
-            const params = new URLSearchParams(window.location.search);
-            return {
-                partnerCode: params.get('partnerCode'),
-                orderId: params.get('orderId'),
-                requestId: params.get('requestId'),
-                amount: params.get('amount'),
-                orderInfo: params.get('orderInfo'),
-                orderType: params.get('orderType'),
-                transId: params.get('transId'),
-                resultCode: params.get('resultCode'),
-                message: params.get('message'),
-                payType: params.get('payType'),
-                responseTime: params.get('responseTime'),
-                extraData: params.get('extraData'),
-                signature: params.get('signature')
-            };
+        function getParams(){const p=new URLSearchParams(window.location.search);return{momoOrderId:p.get('orderId'),amount:p.get('amount'),transId:p.get('transId'),resultCode:p.get('resultCode'),message:p.get('message'),responseTime:p.get('responseTime'),tableId:p.get('tableId'),tableKey:p.get('tableKey')};}
+        function fmtCurrency(v){return new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND'}).format(Number(v)||0);}
+        function fmtTime(ts){if(!ts)return'-';return new Date(Number(ts)).toLocaleString('vi-VN');}
+        function extractOrderId(momoOrderId){if(!momoOrderId)return null;const parts=momoOrderId.split('_');if(parts.length>=2){const id=parseInt(parts[1]);if(!isNaN(id))return id;}return null;}
+        async function notifyCashier(orderId,tableId,tableKey,transId,amount,resultCode){
+            const gw=window.location.protocol+'//'+window.location.host.replace(':3011',':3000');
+            try{
+                const res=await fetch(gw+'/api/payments/momo/notify-cashier',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_id:orderId,table_id:tableId,table_key:tableKey,trans_id:transId,amount:amount,result_code:resultCode})});
+                const data=await res.json();console.log('notify-cashier:',data);return data;
+            }catch(e){console.error('notify error:',e);return null;}
         }
-
-        function formatPrice(price) {
-            return new Intl.NumberFormat('vi-VN', {
-                style: 'currency',
-                currency: 'VND'
-            }).format(price);
-        }
-
-        function formatDateTime(timestamp) {
-            if (!timestamp) return '-';
-            const date = new Date(parseInt(timestamp));
-            return date.toLocaleString('vi-VN');
-        }
-
-        function showResult(params) {
-            const loading = document.getElementById('loading');
-            const result = document.getElementById('payment-result');
-            const icon = document.getElementById('payment-icon');
-            const title = document.getElementById('payment-title');
-            const message = document.getElementById('payment-message');
-
-            loading.style.display = 'none';
-            result.style.display = 'block';
-
-            const resultCode = parseInt(params.resultCode);
-            
-            if (resultCode === 0) {
-                // Success
-                icon.innerHTML = '<i class="fas fa-check-circle"></i>';
-                icon.className = 'payment-icon success';
-                title.textContent = 'Thanh toĂ¡n thĂ nh cĂ´ng!';
-                title.className = 'payment-title success';
-                message.textContent = 'Cáº£m Æ¡n báº¡n Ä‘Ă£ thanh toĂ¡n. ÄÆ¡n hĂ ng cá»§a báº¡n Ä‘Ă£ Ä‘Æ°á»£c xĂ¡c nháº­n.';
-            } else {
-                // Failed
-                icon.innerHTML = '<i class="fas fa-times-circle"></i>';
-                icon.className = 'payment-icon error';
-                title.textContent = 'Thanh toĂ¡n tháº¥t báº¡i!';
-                title.className = 'payment-title error';
-                message.textContent = params.message || 'ÄĂ£ xáº£y ra lá»—i trong quĂ¡ trĂ¬nh thanh toĂ¡n. Vui lĂ²ng thá»­ láº¡i.';
+        window.addEventListener('DOMContentLoaded',async function(){
+            const p=getParams();
+            const resultCode=parseInt(p.resultCode??'-1');
+            const tableId=parseInt(p.tableId??'0');
+            const tableKey=p.tableKey??'';
+            const transId=p.transId??'';
+            const amount=parseInt(p.amount??'0');
+            const orderId=extractOrderId(p.momoOrderId);
+            const backLink=document.getElementById('back-link');
+            if(tableId&&tableKey){backLink.href='/?tableId='+tableId+'&tableKey='+encodeURIComponent(tableKey);}
+            if(resultCode===0){
+                if(orderId&&tableId&&tableKey){await notifyCashier(orderId,tableId,tableKey,transId,amount,resultCode);}
+                document.getElementById('icon').className='icon success';
+                document.getElementById('icon').innerHTML='<i class="fas fa-check-circle"></i>';
+                document.getElementById('title').className='success';
+                document.getElementById('title').textContent='Thanh toan thanh cong!';
+                document.getElementById('msg').textContent='Cam on ban da thanh toan qua MoMo. Thu ngan da duoc thong bao va se xac nhan don hang cua ban.';
+            }else{
+                document.getElementById('icon').className='icon error';
+                document.getElementById('icon').innerHTML='<i class="fas fa-times-circle"></i>';
+                document.getElementById('title').className='error';
+                document.getElementById('title').textContent='Thanh toan that bai!';
+                document.getElementById('msg').textContent=(p.message||'Da xay ra loi trong qua trinh thanh toan.')+' (Code: '+resultCode+')';
             }
-
-            // Update details
-            document.getElementById('order-id').textContent = params.orderId || '-';
-            document.getElementById('trans-id').textContent = params.transId || '-';
-            document.getElementById('amount').textContent = params.amount ? formatPrice(params.amount) : '-';
-            document.getElementById('payment-time').textContent = formatDateTime(params.responseTime);
-
-            // Set back to order link
-            if (params.extraData) {
-                try {
-                    const extra = JSON.parse(params.extraData);
-                    const backLink = document.getElementById('back-to-order');
-                    backLink.href = `${window.location.origin}/?table_id=${extra.tableId}&key=${extra.tableKey || ''}`;
-                } catch (e) {
-                    console.error('Error parsing extraData:', e);
-                }
-            }
-        }
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            const params = getUrlParams();
-            console.log('Payment return params:', params);
-            
-            // Show loading for a moment
-            setTimeout(() => {
-                showResult(params);
-            }, 1000);
+            document.getElementById('d-order').textContent=orderId?'#'+orderId:(p.momoOrderId||'-');
+            document.getElementById('d-trans').textContent=transId||'-';
+            document.getElementById('d-time').textContent=fmtTime(p.responseTime);
+            document.getElementById('d-amount').textContent=fmtCurrency(amount);
+            document.getElementById('loading').style.display='none';
+            document.getElementById('result').style.display='block';
         });
     </script>
 </body>
 </html>
-

@@ -99,7 +99,10 @@ public class OrderController {
             @PathVariable @NonNull Integer id,
             @RequestBody(required = false) Map<String, Object> payload) {
         String tableKey = payload != null ? (String) payload.get("table_key") : null;
-        return ResponseEntity.ok(orderService.requestPayment(id, tableKey));
+        String paymentMethod = payload != null
+            ? String.valueOf(payload.getOrDefault("payment_method", "cash"))
+            : "cash";
+        return ResponseEntity.ok(orderService.requestPayment(id, tableKey, paymentMethod));
     }
 
     @PostMapping("/complete-payment")
@@ -142,5 +145,18 @@ public class OrderController {
         }
         orderService.confirmOrder(id);
         return ResponseEntity.ok(Map.of("message", "Đã gửi bếp"));
+    }
+
+    /**
+     * Đánh dấu các đơn hàng của phiên sang trạng thái 'waiting'
+     * (được gọi nội bộ bởi payment-service sau khi khách thanh toán MoMo).
+     */
+    @PostMapping("/{id}/mark-waiting")
+    public ResponseEntity<Map<String, Object>> markWaiting(
+            @PathVariable @NonNull Integer id,
+            @RequestBody Map<String, String> payload) {
+        String tableKey = payload.get("table_key");
+        orderService.markOrdersWaiting(id, tableKey);
+        return ResponseEntity.ok(Map.of("success", true));
     }
 }

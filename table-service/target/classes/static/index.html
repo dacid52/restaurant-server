@@ -396,25 +396,87 @@
             <path d="M1 10h22"/>
           </svg>
         </div>
-        <h3 class="payment-modal-title">Yêu cầu thanh toán</h3>
+        <h3 class="payment-modal-title">Chọn phương thức thanh toán</h3>
         <div class="payment-modal-info">
           <div class="payment-info-row">
             <span class="payment-info-label">Tổng tiền phiên</span>
             <span id="payment-total" class="payment-info-value">0đ</span>
           </div>
         </div>
-        <p class="payment-modal-note">
-          Yêu cầu thanh toán sẽ được gửi đến thu ngân. Nhân viên sẽ đến bàn để hỗ trợ thanh toán.
-        </p>
-        <button class="btn btn-accent btn-lg btn-full" onclick="submitPaymentRequest()">
-          Gửi yêu cầu thanh toán
-        </button>
+
+        <!-- Chọn phương thức -->
+        <div class="payment-method-options">
+          <button id="btn-cash" class="payment-method-btn active" onclick="selectPaymentMethod('cash')">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="1" y="4" width="22" height="16" rx="2"/>
+              <path d="M1 10h22"/>
+            </svg>
+            <span>Tiền mặt</span>
+            <small>Nhân viên đến thu</small>
+          </button>
+          <button id="btn-momo" class="payment-method-btn" onclick="selectPaymentMethod('momo')">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M8 12h8M12 8v8"/>
+            </svg>
+            <span>MoMo</span>
+            <small>Quét mã QR / App</small>
+          </button>
+        </div>
+
+        <div id="payment-cash-note">
+          <p class="payment-modal-note">
+            Yêu cầu thanh toán sẽ được gửi đến thu ngân. Nhân viên sẽ đến bàn để hỗ trợ thanh toán.
+          </p>
+          <button class="btn btn-accent btn-lg btn-full" onclick="submitPaymentRequest()">
+            Gửi yêu cầu tiền mặt
+          </button>
+        </div>
+
+        <div id="payment-momo-note" style="display:none;">
+          <p class="payment-modal-note" style="color:#a50064;font-weight:500;">
+            Yêu cầu MoMo sẽ được gửi đến thu ngân. Thu ngân sẽ mở trang thanh toán MoMo để bạn quét và hoàn tất giao dịch.
+          </p>
+          <button class="btn btn-momo btn-lg btn-full" id="btn-pay-momo" onclick="submitMomoPayment()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="margin-right:8px"><circle cx="12" cy="12" r="10"/></svg>
+            Gửi yêu cầu MoMo cho thu ngân
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- Toast Container -->
   <div id="toast-container" class="toast-container"></div>
+
+  <!-- MoMo QR Modal -->
+  <div id="momo-qr-modal" class="modal hidden">
+    <div class="modal-overlay" onclick="closeMomoQrModal()"></div>
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <button class="modal-close" onclick="closeMomoQrModal()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
+        </svg>
+      </button>
+      <div class="momo-qr-content">
+        <div class="momo-qr-header">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="#a50064"><circle cx="12" cy="12" r="10"/></svg>
+          <h3 class="momo-qr-title">Quét mã để thanh toán</h3>
+          <p class="momo-qr-subtitle">Dùng app MoMo hoặc camera quét mã QR bên dưới</p>
+        </div>
+        <div class="momo-qr-box">
+          <img id="momo-qr-img" alt="MoMo QR Code" />
+        </div>
+        <div class="momo-qr-amount-row">
+          <span>Số tiền thanh toán</span>
+          <strong id="momo-qr-amount" class="momo-qr-amount"></strong>
+        </div>
+        <p class="momo-qr-note">Sau khi quét và thanh toán thành công, thu ngân sẽ xác nhận đơn hàng của bạn.</p>
+        <button class="btn btn-outline btn-full" onclick="closeMomoQrModal()">Đóng</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Socket.io replacement -->
   <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>

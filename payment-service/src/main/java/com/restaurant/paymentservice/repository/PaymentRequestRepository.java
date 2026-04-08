@@ -14,7 +14,8 @@ public interface PaymentRequestRepository extends JpaRepository<PaymentRequest, 
 
     List<PaymentRequest> findByOrderIdInAndStatus(List<Integer> orderIds, String status);
 
-    @Query(value = "SELECT pr.order_id, pr.table_id, pr.total, pr.request_time, pr.status, o.table_key " +
+    @Query(value = "SELECT pr.order_id, pr.table_id, pr.total, pr.request_time, pr.status, o.table_key, " +
+            "pr.payment_method, pr.momo_trans_id " +
             "FROM paymentdb.payment_requests pr " +
             "LEFT JOIN orderdb.orders o ON pr.order_id = o.id " +
             "WHERE pr.status = 'waiting' " +

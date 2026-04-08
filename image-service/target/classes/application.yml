@@ -1,5 +1,6 @@
 server:
   port: 3007
+  address: 127.0.0.1
 
 spring:
   jackson:

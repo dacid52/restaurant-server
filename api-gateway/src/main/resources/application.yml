@@ -98,4 +98,14 @@ spring:
           predicates:
             - Path=/ws/order/**
 
+# Actuator: chỉ mở endpoint health, ẩn tất cả endpoint còn lại
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
 

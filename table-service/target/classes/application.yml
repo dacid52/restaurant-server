@@ -1,5 +1,6 @@
 server:
   port: 3011
+  address: 127.0.0.1
 
 spring:
   jackson:
@@ -15,7 +16,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}

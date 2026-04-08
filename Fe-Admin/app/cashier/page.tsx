@@ -6,9 +6,7 @@ import { toast } from "sonner";
 import {
     Clock,
     CheckCircle,
-    AlertCircle,
     Banknote,
-    Users,
     Receipt,
     DollarSign,
     Eye,
@@ -17,7 +15,8 @@ import {
     Wifi,
     WifiOff,
     Printer,
-    UtensilsCrossed
+    UtensilsCrossed,
+    ExternalLink
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,6 +61,8 @@ interface WaitingPayment {
     request_time: string;
     status: string;
     order_count: number;
+    payment_method?: string;   // 'cash' | 'momo'
+    momo_trans_id?: string;    // mã giao dịch MoMo (nếu có)
 }
 
 interface OrderItem {
@@ -134,6 +135,7 @@ export default function CashierPage() {
     const [detailDialogOpen, setDetailDialogOpen] = useState(false);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [openingMomoOrderId, setOpeningMomoOrderId] = useState<number | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     const [confirmingBuffetId, setConfirmingBuffetId] = useState<number | null>(null);
     useEffect(() => {
@@ -274,15 +276,9 @@ export default function CashierPage() {
         fetcher
     );
 
-    const unpaidSessions = allSessions?.filter(
-        (session: OrderSessionSummary) => session.payment_status === "unpaid"
-    ) || [];
-
     // Calculate stats
     const totalWaiting = waitingPayments?.length || 0;
     const totalWaitingAmount = waitingPayments?.reduce((sum: number, p: WaitingPayment) => sum + p.total, 0) || 0;
-    const totalUnpaid = unpaidSessions.length;
-    const totalUnpaidAmount = unpaidSessions.reduce((sum: number, s: OrderSessionSummary) => sum + s.total_amount, 0);
 
     const selectedSessionOrders = selectedSessionDetail?.orders || [];
 
@@ -303,6 +299,39 @@ export default function CashierPage() {
     const handleOpenPaymentDialog = (payment: WaitingPayment) => {
         setSelectedPayment(payment);
         setPaymentDialogOpen(true);
+    };
+
+    const handleOpenMomoPayment = async (payment: WaitingPayment) => {
+        setOpeningMomoOrderId(payment.order_id);
+        try {
+            const payload = {
+                order_id: payment.order_id,
+                table_id: payment.table_id,
+                table_key: payment.table_key,
+                amount: payment.total,
+            };
+
+            const response = await api.post("/payments/momo/create", payload);
+            const payUrl = response.data?.payUrl || response.data?.pay_url;
+            if (!payUrl) {
+                throw new Error("MoMo không trả về liên kết thanh toán");
+            }
+
+            const popup = window.open(payUrl, "_blank", "noopener,noreferrer");
+            if (!popup) {
+                window.location.href = payUrl;
+            }
+
+            toast.success("Đã mở trang thanh toán MoMo", {
+                description: `Bàn ${payment.table_id}: khách có thể quét và thanh toán sandbox`,
+            });
+        } catch (error: any) {
+            toast.error("Không mở được trang MoMo", {
+                description: error.response?.data?.error || error.message,
+            });
+        } finally {
+            setOpeningMomoOrderId(null);
+        }
     };
 
     // Print bill generator
@@ -442,7 +471,7 @@ export default function CashierPage() {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
                 <Card className={totalWaiting > 0 ? "border-amber-500 shadow-amber-500/20" : ""}>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium">Chờ thanh toán</CardTitle>
@@ -463,26 +492,6 @@ export default function CashierPage() {
                         <p className="text-xs text-muted-foreground">từ {totalWaiting} bàn</p>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Đang dùng bữa</CardTitle>
-                        <Users className="size-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalUnpaid}</div>
-                        <p className="text-xs text-muted-foreground">bàn chưa thanh toán</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Tổng chưa thu</CardTitle>
-                        <AlertCircle className="size-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(totalUnpaidAmount)}</div>
-                        <p className="text-xs text-muted-foreground">từ khách đang ăn</p>
-                    </CardContent>
-                </Card>
             </div>
 
             {/* Main Content */}
@@ -500,10 +509,6 @@ export default function CashierPage() {
                                 {pendingBuffetSessions.length}
                             </span>
                         )}
-                    </TabsTrigger>
-                    <TabsTrigger value="unpaid" className="gap-2">
-                        <Users className="size-4" />
-                        Đang dùng bữa ({totalUnpaid})
                     </TabsTrigger>
                     <TabsTrigger value="history" className="gap-2">
                         <History className="size-4" />
@@ -571,10 +576,19 @@ export default function CashierPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge className="bg-amber-500 hover:bg-amber-600 gap-1 animate-pulse">
-                                                        <Clock className="size-3" />
-                                                        Chờ thu ngân
-                                                    </Badge>
+                                                    {payment.payment_method === 'momo' ? (
+                                                        <div className="flex flex-col gap-1">
+                                                            <Badge className="bg-[#a50064] hover:bg-[#8a0055] gap-1 animate-pulse w-fit">
+                                                                <div className="size-3 rounded-full bg-white flex items-center justify-center"><span className="text-[#a50064] font-bold" style={{fontSize:'7px'}}>M</span></div>
+                                                                {payment.momo_trans_id ? 'MoMo đã TT' : 'Yêu cầu MoMo'}
+                                                            </Badge>
+                                                        </div>
+                                                    ) : (
+                                                        <Badge className="bg-amber-500 hover:bg-amber-600 gap-1 animate-pulse">
+                                                            <Clock className="size-3" />
+                                                            Chờ thu ngân
+                                                        </Badge>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-2">
@@ -594,14 +608,26 @@ export default function CashierPage() {
                                                             <Eye className="size-4 mr-1" />
                                                             Chi tiết
                                                         </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            className="bg-green-600 hover:bg-green-700"
-                                                            onClick={() => handleOpenPaymentDialog(payment)}
-                                                        >
-                                                            <Banknote className="size-4 mr-1" />
-                                                            Thu tiền
-                                                        </Button>
+                                                        {payment.payment_method === 'momo' ? (
+                                                            <Button
+                                                                size="sm"
+                                                                className="bg-[#a50064] hover:bg-[#8a0055]"
+                                                                disabled={openingMomoOrderId === payment.order_id}
+                                                                onClick={() => handleOpenMomoPayment(payment)}
+                                                            >
+                                                                <ExternalLink className="size-4 mr-1" />
+                                                                {openingMomoOrderId === payment.order_id ? 'Đang mở...' : 'Mở trang MoMo'}
+                                                            </Button>
+                                                        ) : (
+                                                            <Button
+                                                                size="sm"
+                                                                className="bg-green-600 hover:bg-green-700"
+                                                                onClick={() => handleOpenPaymentDialog(payment)}
+                                                            >
+                                                                <Banknote className="size-4 mr-1" />
+                                                                Thu tiền
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -687,73 +713,6 @@ export default function CashierPage() {
                     </Card>
                 </TabsContent>
 
-                {/* Unpaid Orders Tab */}
-                <TabsContent value="unpaid">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Đang dùng bữa</CardTitle>
-                            <CardDescription>
-                                Theo dõi các khách đang dùng bữa nhưng chưa yêu cầu thanh toán (kiểm soát rủi ro).
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {isLoadingOrders ? (
-                                <div className="space-y-4">
-                                    {[1, 2, 3].map((i) => (
-                                        <Skeleton key={i} className="h-16 w-full" />
-                                    ))}
-                                </div>
-                            ) : unpaidSessions.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-                                    <CheckCircle className="size-12 text-green-500/50 mb-4" />
-                                    <h3 className="text-lg font-medium text-foreground">Không có bàn nào đang ăn</h3>
-                                </div>
-                            ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Mã đơn</TableHead>
-                                            <TableHead>Bàn</TableHead>
-                                            <TableHead>Trạng thái chế biến</TableHead>
-                                            <TableHead>Tổng tiền tạm tính</TableHead>
-                                            <TableHead>Thời gian vào</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {unpaidSessions.map((session: OrderSessionSummary) => (
-                                            <TableRow key={`${session.table_id}-${session.table_key}`}>
-                                                <TableCell>
-                                                    <span className="font-mono font-medium">{session.order_count} đơn</span>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline">Bàn {session.table_id}</Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge
-                                                        variant={
-                                                            session.status === "Hoàn thành" || session.status === "completed"
-                                                                ? "default"
-                                                                : session.status === "Đang nấu" || session.status === "cooking"
-                                                                    ? "secondary"
-                                                                    : "outline"
-                                                        }
-                                                    >
-                                                        {session.status}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <span className="font-medium text-muted-foreground">{formatCurrency(session.total_amount)}</span>
-                                                </TableCell>
-                                                <TableCell>{formatDate(session.last_order_time)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            )}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
                 {/* History Tab */}
                 <TabsContent value="history">
                     <Card>
@@ -821,6 +780,26 @@ export default function CashierPage() {
                     </DialogHeader>
                     {selectedPayment && (
                         <div className="space-y-4">
+                            {/* Badge phương thức thanh toán */}
+                            {selectedPayment.payment_method === 'momo' ? (
+                                <div className="flex items-center gap-2 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 p-3">
+                                    <div className="size-8 rounded-full bg-[#a50064] flex items-center justify-center text-white font-bold text-xs flex-shrink-0">M</div>
+                                    <div>
+                                        <p className="text-sm font-semibold text-purple-700 dark:text-purple-300">
+                                            {selectedPayment.momo_trans_id ? 'Khách đã thanh toán qua MoMo' : 'Khách yêu cầu thanh toán qua MoMo'}
+                                        </p>
+                                        {selectedPayment.momo_trans_id && (
+                                            <p className="text-xs text-muted-foreground font-mono">Trans ID: {selectedPayment.momo_trans_id}</p>
+                                        )}
+                                    </div>
+                                    <Badge className="ml-auto bg-[#a50064] text-white">MoMo</Badge>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 p-3">
+                                    <CreditCard className="size-5 text-green-600" />
+                                    <p className="text-sm font-medium text-green-700 dark:text-green-300">Thanh toán tiền mặt — thu ngân nhận tiền trực tiếp</p>
+                                </div>
+                            )}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <p className="text-sm text-muted-foreground">Số bàn</p>
@@ -884,16 +863,31 @@ export default function CashierPage() {
                              In Tạm Tính
                         </Button>
                         <Button
-                             className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
+                             className={selectedPayment?.payment_method === 'momo'
+                                 ? "bg-[#a50064] hover:bg-[#8a0055] w-full sm:w-auto"
+                                 : "bg-green-600 hover:bg-green-700 w-full sm:w-auto"}
                             onClick={() => {
                                 setDetailDialogOpen(false);
                                 if (selectedPayment) {
-                                    handleOpenPaymentDialog(selectedPayment);
+                                    if (selectedPayment.payment_method === 'momo') {
+                                        handleOpenMomoPayment(selectedPayment);
+                                    } else {
+                                        handleOpenPaymentDialog(selectedPayment);
+                                    }
                                 }
                             }}
                         >
-                            <Banknote className="size-5 mr-2" />
-                            Xác Nhận Đã Nhận Tiền
+                            {selectedPayment?.payment_method === 'momo' ? (
+                                <>
+                                    <ExternalLink className="size-4 mr-1" />
+                                    Mở trang MoMo
+                                </>
+                            ) : (
+                                <>
+                                    <Banknote className="size-5 mr-2" />
+                                    Xác Nhận Đã Nhận Tiền
+                                </>
+                            )}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -905,7 +899,9 @@ export default function CashierPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="flex items-center gap-2">
                             <Banknote className="size-5 text-green-600" />
-                            Xác nhận đã nhận tiền mặt
+                            {selectedPayment?.payment_method === 'momo'
+                                ? 'Xác nhận MoMo đã thanh toán'
+                                : 'Xác nhận đã nhận tiền mặt'}
                         </AlertDialogTitle>
                         <AlertDialogDescription asChild>
                             <div className="space-y-4">
@@ -927,7 +923,7 @@ export default function CashierPage() {
                                     </div>
                                 )}
                                 <p className="text-sm font-medium text-amber-600 bg-amber-500/10 p-2 rounded flex items-center gap-2">
-                                    <AlertCircle className="size-4" />
+                                    <Clock className="size-4" />
                                     Hành động này sẽ xóa phiên bàn hiện tại và cho phép bàn nhận khách mới!
                                 </p>
                             </div>

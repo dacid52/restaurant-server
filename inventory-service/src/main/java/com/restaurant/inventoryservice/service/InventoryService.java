@@ -3,9 +3,12 @@ package com.restaurant.inventoryservice.service;
 import com.restaurant.inventoryservice.entity.Ingredient;
 import com.restaurant.inventoryservice.repository.IngredientRepository;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -105,5 +108,49 @@ public class InventoryService {
             result.put(i.getId(), data);
         }
         return result;
+    }
+
+    public byte[] exportInventoryExcel() {
+        List<Ingredient> ingredients = ingredientRepository.findAllByOrderByNameAsc();
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Ton kho");
+
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFont(headerFont);
+
+            Row header = sheet.createRow(0);
+            String[] cols = {"STT", "ID", "Ten nguyen lieu", "Don vi", "So luong ton", "Trang thai"};
+            for (int i = 0; i < cols.length; i++) {
+                Cell cell = header.createCell(i);
+                cell.setCellValue(cols[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            int rowIdx = 1;
+            int stt = 1;
+            for (Ingredient ingredient : ingredients) {
+                Row row = sheet.createRow(rowIdx++);
+                row.createCell(0).setCellValue(stt++);
+                row.createCell(1).setCellValue(ingredient.getId() != null ? ingredient.getId() : 0);
+                row.createCell(2).setCellValue(ingredient.getName() != null ? ingredient.getName() : "");
+                row.createCell(3).setCellValue(ingredient.getUnit() != null ? ingredient.getUnit() : "");
+                row.createCell(4).setCellValue(ingredient.getQuantity() != null ? ingredient.getQuantity().doubleValue() : 0D);
+
+                BigDecimal qty = ingredient.getQuantity() != null ? ingredient.getQuantity() : BigDecimal.ZERO;
+                String status = qty.compareTo(new BigDecimal("10")) < 0 ? "Sap het" : "Du";
+                row.createCell(5).setCellValue(status);
+            }
+
+            for (int i = 0; i < cols.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Khong the xuat file Excel ton kho", e);
+        }
     }
 }
