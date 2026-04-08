@@ -64,18 +64,14 @@ export default function KitchenPage() {
     data: queueItems = [],
     mutate: mutateQueue,
     isLoading: isLoadingQueue,
-  } = useSWR<KitchenItem[]>("/kitchen/queue", fetcher, {
-    refreshInterval: 5000, // Auto refresh every 5 seconds
-  });
+  } = useSWR<KitchenItem[]>("/kitchen/queue", fetcher);
 
   // Fetch kitchen stats
   const {
     data: stats,
     mutate: mutateStats,
     isLoading: isLoadingStats,
-  } = useSWR<KitchenStats>("/kitchen/stats", fetcher, {
-    refreshInterval: 5000,
-  });
+  } = useSWR<KitchenStats>("/kitchen/stats", fetcher);
 
   useEffect(() => {
     let mounted = true;

@@ -50,7 +50,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import api from "@/lib/axios";
-import { paymentSocket, orderSocket } from "@/lib/socket";
+import { paymentSocket, orderSocket, kitchenSocket } from "@/lib/socket";
 
 // Types
 interface WaitingPayment {
@@ -207,6 +207,36 @@ export default function CashierPage() {
         return () => {
             mounted = false;
             orderSocket.disconnect();
+        };
+    }, []);
+
+    // Kitchen-service phát order.status.updated qua broker riêng (/ws/kitchen)
+    // Cần subscribe riêng qua kitchenSocket để thu ngân biết bếp đã nấu xong
+    useEffect(() => {
+        let mounted = true;
+
+        kitchenSocket.connect(
+            () => {
+                if (!mounted) return;
+
+                kitchenSocket.subscribe("/topic/order.status.updated", (data) => {
+                    if (!mounted) return;
+                    mutate("/orders/sessions");
+                    mutate("/payments/waiting");
+                    if (data?.table_id != null && data?.table_key) {
+                        mutate(`/orders/sessions/detail?tableId=${data.table_id}&tableKey=${encodeURIComponent(data.table_key)}`);
+                    }
+                });
+            },
+            (err) => {
+                if (!mounted) return;
+                console.error("Kitchen socket error (cashier):", err);
+            }
+        );
+
+        return () => {
+            mounted = false;
+            kitchenSocket.disconnect();
         };
     }, []);
 

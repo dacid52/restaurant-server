@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import useSWR, { mutate } from "swr";
 import {
     Search,
@@ -203,6 +203,9 @@ export default function OrdersManagementPage() {
     const [itemStatuses, setItemStatuses] = useState<Record<number, KitchenItemStatus>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const isFirstLoad = useRef(true);
+    // Ref để tránh đưa selectedSessionDetailKey vào deps của socket useEffect
+    const selectedDetailKeyRef = useRef<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [filterPayment, setFilterPayment] = useState<string>("all");
@@ -225,7 +228,9 @@ export default function OrdersManagementPage() {
     // Fetch orders
     const fetchOrders = useCallback(async () => {
         try {
-            setLoading(true);
+            if (isFirstLoad.current) {
+                setLoading(true);
+            }
             setError(null);
             const [sessionsResponse, kitchenQueueResponse] = await Promise.all([
                 api.get("/orders/sessions"),
@@ -248,6 +253,7 @@ export default function OrdersManagementPage() {
 
             setSessions(nextSessions);
             setItemStatuses(nextItemStatuses);
+            isFirstLoad.current = false;
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "Không thể tải dữ liệu đơn hàng";
             setError(errorMessage);
@@ -259,9 +265,6 @@ export default function OrdersManagementPage() {
 
     useEffect(() => {
         fetchOrders();
-        // Auto refresh every 10s to catch new orders from customers
-        const interval = setInterval(fetchOrders, 10000);
-        return () => clearInterval(interval);
     }, [fetchOrders]);
 
     useEffect(() => {
@@ -271,17 +274,32 @@ export default function OrdersManagementPage() {
             () => {
                 if (!mounted) return;
 
+                // Cập nhật trạng thái từng món bếp trực tiếp vào state, không reload UI
                 kitchenSocket.subscribe("/topic/kitchen.queue-updated", (data) => {
-                    if (!data?.order_detail_id || !data?.status) return;
+                    if (!mounted) return;
+                    if (data?.order_detail_id && data?.status) {
+                        setItemStatuses((prev) => ({
+                            ...prev,
+                            [data.order_detail_id]: {
+                                order_detail_id: data.order_detail_id,
+                                status: data.status,
+                                updated_at: data.updated_at,
+                            },
+                        }));
+                    }
+                    // Session status cũng có thể thay đổi (VD: tất cả món "Hoàn thành")
+                    fetchOrders();
+                });
 
-                    setItemStatuses((prev) => ({
-                        ...prev,
-                        [data.order_detail_id]: {
-                            order_detail_id: data.order_detail_id,
-                            status: data.status,
-                            updated_at: data.updated_at,
-                        },
-                    }));
+                // Kitchen-service phát order.status.updated qua broker /ws/kitchen (KHÔNG qua /ws/order)
+                // nên phải subscribe ở đây chứ không phải orderSocket
+                kitchenSocket.subscribe("/topic/order.status.updated", async () => {
+                    if (!mounted) return;
+                    await fetchOrders();
+                    await mutate("/orders/sessions");
+                    if (selectedDetailKeyRef.current) {
+                        await mutate(selectedDetailKeyRef.current);
+                    }
                 });
             },
             (err) => {
@@ -294,11 +312,13 @@ export default function OrdersManagementPage() {
             mounted = false;
             kitchenSocket.disconnect();
         };
-    }, []);
+    }, [fetchOrders]);
 
     const selectedSessionDetailKey = selectedOrder
         ? `/orders/sessions/detail?tableId=${selectedOrder.table_id}&tableKey=${encodeURIComponent(selectedOrder.table_key || "")}`
         : null;
+    // Đồng bộ ref ngay trong render, không cần useEffect riêng
+    selectedDetailKeyRef.current = selectedSessionDetailKey;
 
     const { data: selectedSessionDetail } = useSWR<OrderSessionDetail>(
         selectedSessionDetailKey,
@@ -315,8 +335,8 @@ export default function OrdersManagementPage() {
                 const revalidateOrdersView = async () => {
                     await fetchOrders();
                     await mutate("/orders/sessions");
-                    if (selectedSessionDetailKey) {
-                        await mutate(selectedSessionDetailKey);
+                    if (selectedDetailKeyRef.current) {
+                        await mutate(selectedDetailKeyRef.current);
                     }
                 };
 
@@ -351,7 +371,7 @@ export default function OrdersManagementPage() {
             mounted = false;
             orderSocket.disconnect();
         };
-    }, [fetchOrders, selectedSessionDetailKey]);
+    }, [fetchOrders]);
 
     // Filter orders
     const filteredSessions = sessions.filter((session) => {

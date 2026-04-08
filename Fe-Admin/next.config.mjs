@@ -1,4 +1,8 @@
 /** @type {import('next').NextConfig} */
+const gatewayUrl = process.env.NEXT_PUBLIC_API_URL
+  ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
+  : 'http://localhost:3000';
+
 const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
@@ -10,7 +14,7 @@ const nextConfig = {
     return [
       {
         source: '/api/images/:path*',
-        destination: 'http://localhost:3000/api/images/:path*',
+        destination: `${gatewayUrl}/api/images/:path*`,
       },
     ]
   },

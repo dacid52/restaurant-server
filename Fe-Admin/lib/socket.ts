@@ -35,6 +35,12 @@ export class SocketClient {
       onConnect();
     };
 
+    // Nếu đã connected sẵn (singleton dùng lại giữa các page), chạy setup ngay
+    if (this.client.active) {
+      onConnect();
+      return;
+    }
+
     if (onError) {
       this.client.onStompError = (error) => {
         console.error(`❌ STOMP Error (${this.servicePath}):`, error);
