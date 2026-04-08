@@ -3,4 +3,17 @@ spring:
     url: jdbc:mysql://localhost:3306/tabledb?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8
     username: root
     password: ""
-# uamm sdml fpks qddj
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: "huy211439@gmail.com"
+    password: "fbikwnsabgfjgorq"
+    properties:
+      mail:
+        smtp:
+          auth: true
+          from: "huy211439@gmail.com"
+          auth.mechanisms: LOGIN PLAIN
+          starttls:
+            enable: true
+            required: true

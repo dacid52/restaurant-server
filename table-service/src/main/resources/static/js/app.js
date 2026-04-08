@@ -839,7 +839,13 @@ async function loadBuffetPackages() {
   }
 }
 
+let _refreshing = false;
+
 async function refreshOrders() {
+  // Chống gọi đồng thời nhiều lần khi socket emit nhiều events liên tiếp
+  if (_refreshing) return;
+  _refreshing = true;
+  try {
   const [orders, summary] = await Promise.all([
     fetchJson(`/api/orders/table/${state.tableId}?tableKey=${encodeURIComponent(state.tableKey || '')}&t=${Date.now()}`),
     fetchJson(`/api/orders/table/${state.tableId}/session-summary?tableKey=${encodeURIComponent(state.tableKey || '')}&t=${Date.now()}`),
@@ -881,6 +887,9 @@ async function refreshOrders() {
   updateHeader();
   updateBuffetBanner();
   renderOrders();
+  } finally {
+    _refreshing = false;
+  }
 }
 
 function initializeSocket() {
@@ -908,12 +917,26 @@ function initializeSocket() {
           await refreshOrders();
         } else if (event === 'order_status_updated') {
           if (!shouldProcessSocketEvent('order_status_updated', [data.order_id, data.status, data.payment_status])) return;
+
+          // Cập nhật inline trước khi đợi fetch từ server
+          const existingOrder = state.orders.find((o) => String(o.id) === String(data.order_id));
+          if (existingOrder && data.status) {
+            existingOrder.status = data.status;
+            existingOrder.payment_status = data.payment_status || existingOrder.payment_status;
+          }
+
           const normalizedStatus = normalizeOrderStatus(data.status);
           if (normalizedStatus === 'Hoàn thành') {
             showToast('Món ăn đã được phục vụ', 'success');
+          } else if (normalizedStatus === 'Đang chế biến') {
+            showToast('Nhà bếp đang chuẩn bị món của bạn', 'info');
           } else if (data.payment_status === 'waiting') {
             showToast('Thu ngân đã nhận yêu cầu thanh toán', 'info');
+          } else if (data.status === 'Chờ chế biến') {
+            showToast('Đơn hàng đã được xác nhận, chờ bếp chuẩn bị', 'info');
           }
+
+          if (state.currentTab === 'orders') renderOrders();
           await refreshOrders();
         } else if (event === 'payment_completed') {
           if (!shouldProcessSocketEvent('payment_completed', [data.request_id, data.order_id, data.table_id, data.amount])) return;
@@ -930,6 +953,7 @@ function initializeSocket() {
   const kitchenStomp = Stomp.over(kitchenSocket);
   kitchenStomp.debug = null;
   kitchenStomp.connect({}, () => {
+    // Cập nhật trạng thái từng món (Đang chế biến / Hoàn thành)
     kitchenStomp.subscribe(`/topic/order.item-status.${state.tableId}`, async (message) => {
       try {
         const data = JSON.parse(message.body);
@@ -954,6 +978,35 @@ function initializeSocket() {
         }
       } catch (e) {
         console.error('Lỗi khi parse message kitchen item status:', e);
+      }
+    });
+
+    // Cập nhật trạng thái tổng đơn hàng khi bếp thay đổi
+    // (kitchen-service emit tới /topic/order.status.{tableId} khi tất cả món hoàn thành)
+    kitchenStomp.subscribe(`/topic/order.status.${state.tableId}`, async (message) => {
+      try {
+        const data = JSON.parse(message.body);
+        const orderId = data.order_id;
+        const newStatus = data.status;
+
+        if (!shouldProcessSocketEvent('kitchen_order_status', [orderId, newStatus])) return;
+
+        // Cập nhật inline trong state.orders trước khi có dữ liệu từ server
+        const existingOrder = state.orders.find((o) => String(o.id) === String(orderId));
+        if (existingOrder) {
+          existingOrder.status = newStatus;
+        }
+
+        if (newStatus === 'Hoàn thành') {
+          showToast('Tất cả món đã được phục vụ!', 'success');
+        } else if (newStatus === 'Đang nấu') {
+          showToast('Bếp đang chuẩn bị món của bạn', 'info');
+        }
+
+        // Đồng bộ đầy đủ dữ liệu từ server
+        await refreshOrders();
+      } catch (e) {
+        console.error('Lỗi khi parse message kitchen order status:', e);
       }
     });
   });

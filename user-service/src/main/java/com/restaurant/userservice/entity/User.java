@@ -38,6 +38,9 @@ public class User {
     @Column(length = 255)
     private String address;
 
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = false;
 
@@ -69,6 +72,15 @@ public class User {
 
     @Column(name = "email_verification_otp_last_attempt_at")
     private LocalDateTime emailVerificationOtpLastAttemptAt;
+
+    @Column(name = "is_banned", nullable = false)
+    private boolean isBanned = false;
+
+    @Column(name = "ban_reason", length = 500)
+    private String banReason;
+
+    @Column(name = "banned_at")
+    private LocalDateTime bannedAt;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

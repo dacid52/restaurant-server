@@ -12,7 +12,7 @@ function renderNavbar() {
           <a href="/menu/" class="text-gray-600 hover:text-orange-600 transition">Thực đơn</a>
           <a href="/booking/" class="text-gray-600 hover:text-orange-600 transition">Đặt bàn</a>
           ${user ? `
-            <a href="/my-reservations/" class="text-gray-600 hover:text-orange-600 transition">Đặt bàn của tôi</a>
+            <a href="/my-reservations/" class="text-gray-600 hover:text-orange-600 transition">Lịch sử</a>
             <span class="text-gray-400">|</span>
             <span class="text-gray-700 font-medium">${escHtml(user.fullName || user.username)}</span>
             <button onclick="logout()" class="text-red-500 hover:text-red-700 transition">Đăng xuất</button>

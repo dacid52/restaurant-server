@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ImageUpload } from "@/components/ui/image-upload";
 import {
     Dialog,
     DialogContent,
@@ -97,7 +98,7 @@ export default function MenuManagementPage() {
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [filterCategory, setFilterCategory] = useState<string>("all");
-    const [isAdmin, setIsAdmin] = useState(false);
+    const [canManage, setCanManage] = useState(false);
 
     // Dialog states
     const [isCreateFoodDialogOpen, setIsCreateFoodDialogOpen] = useState(false);
@@ -146,10 +147,9 @@ export default function MenuManagementPage() {
     }, []);
 
     useEffect(() => {
-        // Check if user is admin
         const user = getUser();
-        setIsAdmin(user?.roleName === 'ADMIN');
-        
+        const role = user?.roleName?.toUpperCase() ?? '';
+        setCanManage(role === 'ADMIN' || role === 'MANAGER');
         fetchData();
     }, [fetchData]);
 
@@ -417,7 +417,7 @@ export default function MenuManagementPage() {
                             <Button variant="outline" size="icon" onClick={fetchData}>
                                 <RefreshCw className="h-4 w-4" />
                             </Button>
-                            {isAdmin && (
+                            {canManage && (
                             <Dialog open={isCreateFoodDialogOpen} onOpenChange={setIsCreateFoodDialogOpen}>
                                 <DialogTrigger asChild>
                                     <Button onClick={resetFoodForm}>
@@ -471,12 +471,10 @@ export default function MenuManagementPage() {
                                             </Select>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="food-image">Link hình ảnh</Label>
-                                            <Input
-                                                id="food-image"
-                                                placeholder="https://example.com/image.jpg"
+                                            <Label>Hình ảnh</Label>
+                                            <ImageUpload
                                                 value={foodForm.image_url}
-                                                onChange={(e) => setFoodForm({ ...foodForm, image_url: e.target.value })}
+                                                onChange={(url) => setFoodForm({ ...foodForm, image_url: url })}
                                             />
                                         </div>
                                     </div>
@@ -535,28 +533,9 @@ export default function MenuManagementPage() {
                                                 <ImageIcon className="h-12 w-12 text-muted-foreground" />
                                             </div>
                                         )}
-
-                                        {/* Overlay */}
-                                        {isAdmin && (
-                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                            <Button
-                                                size="sm"
-                                                variant="secondary"
-                                                onClick={() => openEditFoodDialog(food)}
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                variant="destructive"
-                                                onClick={() => openDeleteFoodDialog(food)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                        )}
                                     </div>
-                                    <CardContent className="p-4 flex flex-col justify-between h-full">                                        <h3 className="font-semibold text-foreground line-clamp-2 min-h-[48px] mb-2">{food.name}</h3>
+                                    <CardContent className="p-4 flex flex-col justify-between h-full">
+                                        <h3 className="font-semibold text-foreground line-clamp-2 min-h-[48px] mb-2">{food.name}</h3>
                                         <div className="flex items-center justify-between mt-auto">
                                             <Badge variant="secondary" className="text-xs truncate max-w-[55%]">{food.category_name}</Badge>
                                             <span className="font-bold text-primary text-sm whitespace-nowrap">{formatCurrency(food.price)}</span>
@@ -565,6 +544,28 @@ export default function MenuManagementPage() {
                                             <p className="text-xs text-muted-foreground mt-1">
                                                 {food.ingredients.length} nguyên liệu
                                             </p>
+                                        )}
+                                        {canManage && (
+                                            <div className="flex gap-2 mt-3 pt-3 border-t">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="flex-1"
+                                                    onClick={() => openEditFoodDialog(food)}
+                                                >
+                                                    <Pencil className="h-3 w-3 mr-1" />
+                                                    Sửa
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="destructive"
+                                                    className="flex-1"
+                                                    onClick={() => openDeleteFoodDialog(food)}
+                                                >
+                                                    <Trash2 className="h-3 w-3 mr-1" />
+                                                    Xóa
+                                                </Button>
+                                            </div>
                                         )}
                                     </CardContent>
                                 </Card>
@@ -579,7 +580,7 @@ export default function MenuManagementPage() {
                         <p className="text-sm text-muted-foreground">
                             Quản lý các danh mục món ăn trong nhà hàng
                         </p>
-                        {isAdmin && (
+                        {canManage && (
                         <Dialog open={isCreateCategoryDialogOpen} onOpenChange={setIsCreateCategoryDialogOpen}>
                             <DialogTrigger asChild>
                                 <Button onClick={resetCategoryForm}>
@@ -647,7 +648,7 @@ export default function MenuManagementPage() {
                                                     <Badge variant="outline">{foodCount} món</Badge>
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    {isAdmin && (
+                                                    {canManage && (
                                                     <div className="flex items-center justify-end gap-2">
                                                         <Button
                                                             variant="ghost"
@@ -722,11 +723,10 @@ export default function MenuManagementPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="edit-food-image">Link hình ảnh</Label>
-                            <Input
-                                id="edit-food-image"
+                            <Label>Hình ảnh</Label>
+                            <ImageUpload
                                 value={foodForm.image_url}
-                                onChange={(e) => setFoodForm({ ...foodForm, image_url: e.target.value })}
+                                onChange={(url) => setFoodForm({ ...foodForm, image_url: url })}
                             />
                         </div>
                     </div>

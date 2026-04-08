@@ -73,4 +73,29 @@ public class UserController {
         if (!ADMIN_ROLE.equalsIgnoreCase(roleName)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         return ResponseEntity.ok(userService.getAllRoles());
     }
+
+    @GetMapping("/users/customers")
+    public ResponseEntity<List<UserDto>> getCustomers(HttpServletRequest request) {
+        String roleName = (String) request.getAttribute("roleName");
+        if (!ADMIN_ROLE.equalsIgnoreCase(roleName)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(userService.getCustomers());
+    }
+
+    @PutMapping("/users/{id}/ban")
+    public ResponseEntity<UserDto> banUser(
+            @PathVariable @NonNull Integer id,
+            @RequestBody(required = false) java.util.Map<String, String> body,
+            HttpServletRequest request) {
+        String roleName = (String) request.getAttribute("roleName");
+        if (!ADMIN_ROLE.equalsIgnoreCase(roleName)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        String reason = body != null ? body.get("reason") : null;
+        return ResponseEntity.ok(userService.banUser(id, reason));
+    }
+
+    @PutMapping("/users/{id}/unban")
+    public ResponseEntity<UserDto> unbanUser(@PathVariable @NonNull Integer id, HttpServletRequest request) {
+        String roleName = (String) request.getAttribute("roleName");
+        if (!ADMIN_ROLE.equalsIgnoreCase(roleName)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return ResponseEntity.ok(userService.unbanUser(id));
+    }
 }

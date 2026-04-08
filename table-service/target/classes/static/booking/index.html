@@ -90,6 +90,16 @@
           class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition resize-none"></textarea>
       </div>
 
+      <!-- Email nhận xác nhận -->
+      <div>
+        <label class="block text-sm sm:text-base font-medium text-gray-800 mb-2">
+          Email nhận xác nhận
+          <span class="text-gray-400 font-normal text-xs ml-1">(chúng tôi sẽ gửi thông tin đặt bàn)</span>
+        </label>
+        <input id="email" type="email" placeholder="email@example.com"
+          class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition" />
+      </div>
+
       <!-- Submit Button -->
       <button type="submit" id="btn-submit"
         class="w-full bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white font-semibold py-3 sm:py-3.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 text-base sm:text-lg">
@@ -121,6 +131,10 @@
 
     const user = getUser();
     document.getElementById('welcome-msg').textContent = `Xin chào, ${user?.fullName || user?.username}!`;
+    // Auto-fill email từ hồ sơ người dùng
+    if (user?.email) {
+      document.getElementById('email').value = user.email;
+    }
 
     // Ngày tối thiểu = hôm nay
     document.getElementById('date').min = new Date().toISOString().split('T')[0];
@@ -170,13 +184,18 @@
       const start = new Date(`${date}T${time}:00`);
       const end = new Date(start.getTime() + durationMin * 60000);
 
+      // Giữ nguyên giờ local (không dùng toISOString() vì nó chuyển sang UTC)
+      const padZ = n => String(n).padStart(2, '0');
+      const fmtLocal = d =>
+        `${d.getFullYear()}-${padZ(d.getMonth()+1)}-${padZ(d.getDate())}T${padZ(d.getHours())}:${padZ(d.getMinutes())}:00`;
+
       btn.disabled = true;
       btn.textContent = 'Đang kiểm tra...';
 
       try {
         // BUG-019: Kiểm tra availability trước khi POST reservation
-        const startIso = start.toISOString().slice(0, 19);
-        const endIso = end.toISOString().slice(0, 19);
+        const startIso = fmtLocal(start);
+        const endIso = fmtLocal(end);
         const availRes = await apiFetch(
           `/api/tables/${tableId}/reservations/availability?start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}`
         );
@@ -195,6 +214,7 @@
           body: JSON.stringify({
             customer_name: user?.fullName || user?.username || undefined,
             customer_phone: user?.phoneNumber || undefined,
+            customer_email: document.getElementById('email').value || user?.email || undefined,
             party_size: parseInt(document.getElementById('party-size').value),
             start_time: startIso,
             end_time: endIso,

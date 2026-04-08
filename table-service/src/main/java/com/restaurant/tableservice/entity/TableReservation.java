@@ -52,6 +52,9 @@ public class TableReservation {
     @Column(name = "customer_id")
     private Integer customerId;
 
+    @Column(name = "customer_email", length = 200)
+    private String customerEmail;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

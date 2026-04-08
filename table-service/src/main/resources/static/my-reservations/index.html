@@ -59,40 +59,96 @@
     }
 
     function formatDT(s) {
-      return new Date(s).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      return new Date(s).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 
-    apiFetch('/api/tables/reservations/my')
-      .then(data => {
-        document.getElementById('loading').classList.add('hidden');
-        if (!data || data.length === 0) {
-          document.getElementById('empty').classList.remove('hidden');
-          return;
+    function canCancel(status) {
+      return status === 'pending';
+    }
+
+    function isConfirmed(status) {
+      return status === 'confirmed';
+    }
+
+    async function cancelReservation(id) {
+      if (!confirm('Bạn có chắc muốn hủy đơn đặt bàn này không?')) return;
+      try {
+        await apiFetch(`/api/tables/reservations/${id}/cancel`, { method: 'PUT' });
+        // Cập nhật UI ngay lập tức
+        const card = document.getElementById('rsv-' + id);
+        if (card) {
+          card.querySelector('.status-badge').className = 'status-badge text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap bg-red-100 text-red-800';
+          card.querySelector('.status-badge').textContent = 'Đã hủy';
+          const actions = card.querySelector('.cancel-actions');
+          if (actions) actions.remove();
         }
-        const list = document.getElementById('list');
-        list.classList.remove('hidden');
-        list.innerHTML = data.map(r => `
-          <div class="bg-white border rounded-xl shadow-sm p-5">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="font-semibold text-gray-800">Bàn #${r.table_id}</p>
-                <p class="text-sm text-gray-500 mt-0.5">${formatDT(r.start_time)} – ${formatDT(r.end_time)}</p>
-                <p class="text-sm text-gray-500">${r.party_size} khách</p>
-                ${r.is_buffet ? '<p class="text-sm text-orange-600 font-medium mt-1">🍽️ Buffet</p>' : ''}
-                ${r.notes ? `<p class="text-sm text-gray-400 mt-1 italic">"${escHtml(r.notes)}"</p>` : ''}
-              </div>
-              <span class="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${STATUS_COLORS[r.status] || 'bg-gray-100 text-gray-600'}">
-                ${escHtml(STATUS_LABELS[r.status] || r.status)}
-              </span>
-            </div>
-          </div>`).join('');
-      })
-      .catch(err => {
-        document.getElementById('loading').classList.add('hidden');
-        const eb = document.getElementById('error-box');
-        eb.textContent = err.message || 'Không thể tải danh sách đặt bàn';
-        eb.classList.remove('hidden');
-      });
+      } catch (err) {
+        alert('Không thể hủy đơn: ' + (err.message || 'Lỗi không xác định'));
+      }
+    }
+
+    function loadReservations() {
+      apiFetch('/api/tables/reservations/my')
+        .then(data => {
+          document.getElementById('loading').classList.add('hidden');
+          if (!data || data.length === 0) {
+            document.getElementById('empty').classList.remove('hidden');
+            return;
+          }
+          const list = document.getElementById('list');
+          list.classList.remove('hidden');
+          list.innerHTML = data.map(r => {
+            const startFmt = formatDT(r.start_time);
+            const endTime = new Date(r.end_time);
+            const endHM = endTime.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' });
+            const statusColor = STATUS_COLORS[r.status] || 'bg-gray-100 text-gray-600';
+            const cancelBtn = canCancel(r.status)
+              ? `<div class="cancel-actions mt-3 pt-3 border-t border-gray-100">
+                   <button onclick="cancelReservation(${r.id})"
+                     class="text-sm text-red-600 hover:text-red-800 font-medium hover:underline flex items-center gap-1">
+                     ✕ Hủy đặt bàn
+                   </button>
+                 </div>`
+              : isConfirmed(r.status)
+              ? `<div class="mt-3 pt-3 border-t border-gray-100">
+                   <p class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                     ⚠️ Đơn đặt bàn đã được nhà hàng xác nhận, không thể tự hủy.<br>
+                     Nếu bạn cần thay đổi, vui lòng liên hệ hotline:
+                     <a href="tel:0792967979" class="font-semibold text-amber-800 hover:underline">0792967979</a>
+                     để được hỗ trợ.
+                   </p>
+                 </div>`
+              : '';
+            return `
+              <div id="rsv-${r.id}" class="bg-white border rounded-xl shadow-sm p-5">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex-1">
+                    <p class="font-semibold text-gray-800">Bàn #${r.table_id}</p>
+                    <div class="mt-2 bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+                      <p class="text-sm font-bold text-blue-900">🕐 Giờ đến: ${escHtml(startFmt)}</p>
+                      <p class="text-xs text-blue-600">Dự kiến kết thúc: ${escHtml(endHM)}</p>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-2">${r.party_size} khách</p>
+                    ${r.is_buffet ? '<p class="text-sm text-orange-600 font-medium mt-1">🍽️ Buffet' + (r.buffet_package_name ? ' – ' + escHtml(r.buffet_package_name) : '') + '</p>' : ''}
+                    ${r.notes ? `<p class="text-sm text-gray-400 mt-1 italic">"${escHtml(r.notes)}"</p>` : ''}
+                    ${cancelBtn}
+                  </div>
+                  <span class="status-badge text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${statusColor}">
+                    ${escHtml(STATUS_LABELS[r.status] || r.status)}
+                  </span>
+                </div>
+              </div>`;
+          }).join('');
+        })
+        .catch(err => {
+          document.getElementById('loading').classList.add('hidden');
+          const eb = document.getElementById('error-box');
+          eb.textContent = err.message || 'Không thể tải danh sách đặt bàn';
+          eb.classList.remove('hidden');
+        });
+    }
+
+    loadReservations();
   </script>
 </body>
 </html>

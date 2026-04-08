@@ -53,4 +53,11 @@ public interface TableReservationRepository extends JpaRepository<TableReservati
             @Param("tableId") Integer tableId,
             @Param("from") LocalDateTime from
     );
+
+    /**
+     * Tìm các đơn confirmed đã quá hạn nhận bàn (start_time + graceMinutes < now).
+     * Dùng cho auto-cancel scheduler.
+     */
+    @Query("SELECT r FROM TableReservation r WHERE r.status = 'confirmed' AND r.startTime < :deadline")
+    List<TableReservation> findConfirmedPastDeadline(@Param("deadline") LocalDateTime deadline);
 }

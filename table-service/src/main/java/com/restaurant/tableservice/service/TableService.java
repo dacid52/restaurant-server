@@ -7,15 +7,23 @@ import com.restaurant.tableservice.repository.TableRepository;
 import com.restaurant.tableservice.repository.TableReservationRepository;
 import com.restaurant.tableservice.util.QrCodeUtil;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.lang.NonNull;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.mail.internet.MimeMessage;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
@@ -28,14 +36,29 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TableService {
 
+    private static final Logger log = LoggerFactory.getLogger(TableService.class);
+    private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final DateTimeFormatter VN_FMT = DateTimeFormatter.ofPattern("HH:mm, dd/MM/yyyy");
+    private static final int AUTO_CANCEL_GRACE_MINUTES = 20;
+
     private static final Set<String> VALID_TABLE_STATUSES = Set.of("Trống", "Đang sử dụng", "Đã đặt", "Chờ xác nhận");
 
     @Value("${app.customer-base-url:http://restaurant-server.site:3011}")
     private String customerBaseUrl;
 
+    @Value("${app.restaurant.name:Nhà Hàng Restaurant}")
+    private String restaurantName;
+
+    @Value("${app.restaurant.address:123 Đường Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh}")
+    private String restaurantAddress;
+
+    @Value("${app.restaurant.phone:028 1234 5678}")
+    private String restaurantPhone;
+
     private final TableRepository tableRepository;
     private final TableKeyRepository tableKeyRepository;
     private final TableReservationRepository tableReservationRepository;
+    private final JavaMailSender mailSender;
 
     public List<RestaurantTable> getAllTables() {
         return tableRepository.findAll();
@@ -120,6 +143,9 @@ public class TableService {
         if (payload.get("customer_id") != null) {
             reservation.setCustomerId(((Number) payload.get("customer_id")).intValue());
         }
+        if (payload.get("customer_email") != null) {
+            reservation.setCustomerEmail(payload.get("customer_email").toString());
+        }
 
         try {
             return tableReservationRepository.save(reservation);
@@ -149,12 +175,65 @@ public class TableService {
         reservation.setStatus(status);
         tableReservationRepository.save(reservation);
 
-        // Khi hoàn thành hoặc khách không đến → đóng phiên bàn (invalidate key + reset bàn về Trống)
+        // Khi hoàn thành hoặc khách không đến → đóng phiên bàn
         if ("completed".equals(status) || "no_show".equals(status)) {
             invalidateTableKey(reservation.getTableId());
         }
 
+        // Khi xác nhận → gửi email thông báo cho khách
+        if ("confirmed".equals(status) && reservation.getCustomerEmail() != null
+                && !reservation.getCustomerEmail().isBlank()) {
+            try {
+                sendConfirmationEmail(reservation);
+            } catch (Exception ex) {
+                log.warn("Không thể gửi email xác nhận cho đơn #{}: {}", id, ex.getMessage());
+            }
+        }
+
         return reservation;
+    }
+
+    /** Khách tự hủy đơn của mình (chỉ được hủy pending hoặc confirmed). */
+    @Transactional
+    @SuppressWarnings("null")
+    public com.restaurant.tableservice.entity.TableReservation cancelMyReservation(
+            @NonNull Integer reservationId, @NonNull Integer customerId) {
+        com.restaurant.tableservice.entity.TableReservation reservation =
+                tableReservationRepository.findById(reservationId)
+                        .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn đặt bàn"));
+        if (!customerId.equals(reservation.getCustomerId())) {
+            throw new RuntimeException("Bạn không có quyền hủy đơn này");
+        }
+        if ("confirmed".equals(reservation.getStatus())) {
+            throw new RuntimeException(
+                "Đơn đặt bàn của bạn đã được nhà hàng xác nhận nên không thể tự hủy. " +
+                "Nếu bạn cần hỗ trợ, vui lòng liên hệ hotline: 0792967979 để được phục vụ.");
+        }
+        if ("serving".equals(reservation.getStatus()) || "completed".equals(reservation.getStatus())) {
+            throw new RuntimeException("Không thể hủy đơn khi đang phục vụ hoặc đã hoàn thành");
+        }
+        if ("cancelled".equals(reservation.getStatus())) {
+            throw new RuntimeException("Đơn đặt bàn đã được hủy");
+        }
+        reservation.setStatus("cancelled");
+        return tableReservationRepository.save(reservation);
+    }
+
+    /** Auto-cancel: mỗi phút kiểm tra các đơn confirmed quá 20 phút chưa nhận bàn. */
+    @Scheduled(fixedDelay = 60_000)
+    @Transactional
+    public void autoCancelExpiredReservations() {
+        LocalDateTime deadline = ZonedDateTime.now(VN_ZONE)
+                .minusMinutes(AUTO_CANCEL_GRACE_MINUTES)
+                .toLocalDateTime();
+        List<com.restaurant.tableservice.entity.TableReservation> expired =
+                tableReservationRepository.findConfirmedPastDeadline(deadline);
+        for (com.restaurant.tableservice.entity.TableReservation r : expired) {
+            r.setStatus("no_show");
+            tableReservationRepository.save(r);
+            log.info("Auto-cancel reservation #{} (bàn {}, khách {}): quá 20 phút chưa nhận bàn",
+                    r.getId(), r.getTableId(), r.getCustomerName());
+        }
     }
 
     public List<com.restaurant.tableservice.entity.TableReservation> getMyReservations(@NonNull Integer customerId) {
@@ -445,5 +524,88 @@ public class TableService {
         } catch (Exception e) {
             throw new RuntimeException("Định dạng thời gian không hợp lệ: " + fieldName);
         }
+    }
+
+    /** Gửi email HTML xác nhận đặt bàn thành công cho khách. */
+    private void sendConfirmationEmail(com.restaurant.tableservice.entity.TableReservation r) throws Exception {
+        String to = r.getCustomerEmail();
+        if (to == null || to.isBlank()) return;
+
+        RestaurantTable table;
+        String tableName;
+        try {
+            table = getTableById(r.getTableId());
+            tableName = table.getName();
+        } catch (Exception e) {
+            tableName = "Bàn #" + r.getTableId();
+        }
+
+        String startVn = r.getStartTime().atZone(VN_ZONE).format(VN_FMT);
+        String endVn   = r.getEndTime().atZone(VN_ZONE).format(VN_FMT);
+
+        String html = buildConfirmationEmailHtml(r, tableName, startVn, endVn);
+
+        MimeMessage msg = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(msg, "UTF-8");
+        helper.setTo(to);
+        helper.setSubject("✅ Xác nhận đặt bàn – " + restaurantName);
+        helper.setText(html, true);
+        mailSender.send(msg);
+        log.info("Đã gửi email xác nhận đặt bàn đến {} cho đơn #{}", to, r.getId());
+    }
+
+    private String buildConfirmationEmailHtml(
+            com.restaurant.tableservice.entity.TableReservation r,
+            String tableName, String startVn, String endVn) {
+        return "<!DOCTYPE html><html lang='vi'><head><meta charset='UTF-8'/></head><body style='margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;'>" +
+               "<table width='100%' cellpadding='0' cellspacing='0' style='background:#f4f4f4;padding:30px 0;'><tr><td align='center'>" +
+               "<table width='600' cellpadding='0' cellspacing='0' style='background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);'>" +
+               // Header
+               "<tr><td style='background:#c0392b;padding:30px 40px;text-align:center;'>" +
+               "<h1 style='color:#ffffff;margin:0;font-size:26px;letter-spacing:1px;'>" + escHtml(restaurantName) + "</h1>" +
+               "<p style='color:#f5b7b1;margin:6px 0 0;font-size:14px;'>Xác nhận đặt bàn</p>" +
+               "</td></tr>" +
+               // Greeting
+               "<tr><td style='padding:30px 40px 10px;'>" +
+               "<p style='font-size:16px;color:#333;margin:0;'>Kính gửi <strong>" + escHtml(r.getCustomerName()) + "</strong>,</p>" +
+               "<p style='font-size:14px;color:#555;margin:12px 0 0;line-height:1.7;'>Chúng tôi rất vui được thông báo rằng đơn đặt bàn của bạn đã được <strong style='color:#27ae60;'>xác nhận thành công</strong>. Dưới đây là thông tin chi tiết:</p>" +
+               "</td></tr>" +
+               // Info box
+               "<tr><td style='padding:10px 40px 20px;'>" +
+               "<table width='100%' cellpadding='12' cellspacing='0' style='background:#fdf9f9;border:1px solid #e8d5d5;border-radius:8px;'>" +
+               "<tr><td style='font-size:13px;color:#555;border-bottom:1px solid #f0e0e0;'><strong style='color:#c0392b;'>📍 Địa điểm</strong></td>" +
+               "<td style='font-size:13px;color:#333;border-bottom:1px solid #f0e0e0;'>" + escHtml(restaurantAddress) + "</td></tr>" +
+               "<tr><td style='font-size:13px;color:#555;border-bottom:1px solid #f0e0e0;'><strong style='color:#c0392b;'>🪑 Bàn</strong></td>" +
+               "<td style='font-size:13px;color:#333;border-bottom:1px solid #f0e0e0;'>" + escHtml(tableName) + "</td></tr>" +
+               "<tr><td style='font-size:13px;color:#555;border-bottom:1px solid #f0e0e0;'><strong style='color:#c0392b;'>🕐 Giờ đến</strong></td>" +
+               "<td style='font-size:13px;color:#333;font-weight:bold;border-bottom:1px solid #f0e0e0;'>" + escHtml(startVn) + "</td></tr>" +
+               "<tr><td style='font-size:13px;color:#555;border-bottom:1px solid #f0e0e0;'><strong style='color:#c0392b;'>🕐 Dự kiến kết thúc</strong></td>" +
+               "<td style='font-size:13px;color:#333;border-bottom:1px solid #f0e0e0;'>" + escHtml(endVn) + "</td></tr>" +
+               "<tr><td style='font-size:13px;color:#555;border-bottom:1px solid #f0e0e0;'><strong style='color:#c0392b;'>👥 Số khách</strong></td>" +
+               "<td style='font-size:13px;color:#333;border-bottom:1px solid #f0e0e0;'>" + r.getPartySize() + " người</td></tr>" +
+               (r.getIsBuffet() != null && r.getIsBuffet() ?
+                   "<tr><td style='font-size:13px;color:#555;'><strong style='color:#c0392b;'>🍽️ Gói buffet</strong></td>" +
+                   "<td style='font-size:13px;color:#333;'>" + escHtml(r.getBuffetPackageName() != null ? r.getBuffetPackageName() : "Có") + "</td></tr>" : "") +
+               (r.getNotes() != null && !r.getNotes().isBlank() ?
+                   "<tr><td style='font-size:13px;color:#555;'><strong style='color:#c0392b;'>📝 Ghi chú</strong></td>" +
+                   "<td style='font-size:13px;color:#555;font-style:italic;'>" + escHtml(r.getNotes()) + "</td></tr>" : "") +
+               "</table></td></tr>" +
+               // Note
+               "<tr><td style='padding:10px 40px 20px;'>" +
+               "<div style='background:#fff8e1;border-left:4px solid #f39c12;padding:12px 16px;border-radius:4px;font-size:13px;color:#555;line-height:1.6;'>" +
+               "⚠️ <strong>Lưu ý:</strong> Vui lòng đến đúng giờ. Đơn đặt bàn sẽ tự động bị hủy nếu quá <strong>20 phút</strong> kể từ giờ đặt mà chưa có mặt." +
+               "</div></td></tr>" +
+               // Footer
+               "<tr><td style='background:#f8f8f8;padding:20px 40px;text-align:center;border-top:1px solid #eee;'>" +
+               "<p style='font-size:12px;color:#999;margin:0;'>📞 Hotline: " + escHtml(restaurantPhone) + "</p>" +
+               "<p style='font-size:12px;color:#bbb;margin:8px 0 0;'>Email này được gửi tự động, vui lòng không trả lời trực tiếp.</p>" +
+               "</td></tr>" +
+               "</table></td></tr></table>" +
+               "</body></html>";
+    }
+
+    private static String escHtml(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
     }
 }

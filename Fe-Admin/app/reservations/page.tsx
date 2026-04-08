@@ -103,11 +103,24 @@ export default function ReservationsPage() {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return 'N/A';
     return d.toLocaleString('vi-VN', {
+      timeZone: 'Asia/Ho_Chi_Minh',
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+    });
+  };
+
+  const formatTime = (iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return 'N/A';
+    return d.toLocaleString('vi-VN', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
     });
   };
 
@@ -276,10 +289,34 @@ export default function ReservationsPage() {
                     <p>
                       <span className="font-medium">Số khách:</span> {r.party_size ?? 'N/A'}
                     </p>
-                    <p>
-                      <span className="font-medium">Thời gian:</span>{' '}
-                      {formatDateTime(r.start_time)} – {formatDateTime(r.end_time)}
-                    </p>
+                    {/* Thời gian đến nổi bật */}
+                    <div className="flex items-center gap-2 mt-1 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                      <CalendarClock className="h-4 w-4 text-blue-600 shrink-0" />
+                      <span>
+                        <span className="font-semibold text-blue-700">Giờ đến:</span>{' '}
+                        <span className="font-bold text-blue-900">{formatTime(r.start_time)}</span>
+                        {' '}–{' '}{formatTime(r.end_time)}
+                      </span>
+                    </div>
+                    {/* Cảnh báo auto-cancel cho confirmed */}
+                    {r.status === 'confirmed' && (() => {
+                      const minsLate = Math.floor((Date.now() - new Date(r.start_time).getTime()) / 60000);
+                      if (minsLate >= 10 && minsLate < 20) {
+                        return (
+                          <div className="flex items-center gap-1 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-2 py-1">
+                            ⚠️ Khách trễ {minsLate} phút – tự hủy sau {20 - minsLate} phút
+                          </div>
+                        );
+                      }
+                      if (minsLate >= 20) {
+                        return (
+                          <div className="flex items-center gap-1 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+                            🚨 Quá giờ {minsLate} phút – sẽ tự động hủy
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                     {r.is_buffet && (
                       <p className="text-orange-600 font-medium">
                         🍽️ Buffet{r.buffet_package_name ? ` – ${r.buffet_package_name}` : ''}

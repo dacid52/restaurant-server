@@ -63,6 +63,13 @@ public class AuthService {
             throw new RuntimeException("Thông tin đăng nhập không đúng");
         }
 
+        if (user.isBanned()) {
+            String reason = user.getBanReason() != null && !user.getBanReason().isBlank()
+                    ? " Lý do: " + user.getBanReason()
+                    : "";
+            throw new RuntimeException("Tài khoản của bạn đã bị khóa." + reason + " Vui lòng liên hệ nhà hàng để được hỗ trợ.");
+        }
+
         String token = jwtUtil.generateToken(
                 user.getId(),
                 user.getUsername(),

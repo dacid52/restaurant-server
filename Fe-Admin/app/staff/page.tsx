@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
     Search,
     Plus,
@@ -19,9 +19,11 @@ import {
     KeyRound,
     ChefHat,
     CreditCard,
+    Ban,
+    CheckCircle,
+    UserX,
 } from "lucide-react";
 import { toast } from "sonner";
-import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -61,8 +63,11 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import api from "@/lib/axios";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface Role {
@@ -81,6 +86,10 @@ interface User {
     email: string;
     address: string;
     email_verified: boolean;
+    avatar_url: string;
+    banned: boolean;
+    ban_reason: string;
+    banned_at: string;
     created_at: string;
     updated_at: string;
 }
@@ -99,6 +108,10 @@ const normalizeUser = (raw: Record<string, unknown>): User => ({
     email: (raw.email ?? "") as string,
     address: (raw.address ?? "") as string,
     email_verified: (raw.email_verified ?? raw.emailVerified ?? false) as boolean,
+    avatar_url: ((raw.avatar_url ?? raw.avatarUrl ?? "") as string),
+    banned: (raw.banned ?? false) as boolean,
+    ban_reason: ((raw.ban_reason ?? raw.banReason ?? "") as string),
+    banned_at: ((raw.banned_at ?? raw.bannedAt ?? "") as string),
     created_at: ((raw.created_at ?? raw.createdAt ?? "") as string),
     updated_at: ((raw.updated_at ?? raw.updatedAt ?? "") as string),
 });
@@ -139,6 +152,14 @@ const getInitials = (name: string): string => {
     return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 };
 
+const resolveAvatarSrc = (url: string) => {
+    if (!url) return "";
+    if (url.startsWith("/api/")) {
+        return `${window.location.protocol}//${window.location.hostname}:3000${url}`;
+    }
+    return url;
+};
+
 // ─── Form state ───────────────────────────────────────────────────────────────
 const emptyForm = () => ({
     username: "",
@@ -150,6 +171,7 @@ const emptyForm = () => ({
     age: "",
     email: "",
     address: "",
+    avatarUrl: "",
 });
 
 type UserForm = ReturnType<typeof emptyForm>;
@@ -189,6 +211,412 @@ function PasswordInput({
     );
 }
 
+// ─── Customer Tab ─────────────────────────────────────────────────────────────
+function CustomerTab() {
+    const [customers, setCustomers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [filterBanned, setFilterBanned] = useState<"all" | "active" | "banned">("all");
+
+    const [banOpen, setBanOpen] = useState(false);
+    const [unbanOpen, setUnbanOpen] = useState(false);
+    const [selectedCustomer, setSelectedCustomer] = useState<User | null>(null);
+    const [banReason, setBanReason] = useState("");
+    const [actionLoading, setActionLoading] = useState(false);
+    const [detailOpen, setDetailOpen] = useState(false);
+
+    const fetchCustomers = useCallback(async () => {
+        try {
+            setLoading(true);
+            const res = await api.get("/users/customers");
+            const data: User[] = Array.isArray(res.data)
+                ? (res.data as Record<string, unknown>[]).map(normalizeUser)
+                : [];
+            setCustomers(data);
+        } catch {
+            toast.error("Không thể tải danh sách khách hàng");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
+
+    const filtered = customers.filter((c) => {
+        const q = searchQuery.toLowerCase();
+        const matchSearch =
+            (c.full_name || "").toLowerCase().includes(q) ||
+            (c.username  || "").toLowerCase().includes(q) ||
+            (c.email     || "").toLowerCase().includes(q) ||
+            (c.phone_number || "").includes(q);
+        const matchBan =
+            filterBanned === "all" ||
+            (filterBanned === "active"  && !c.banned) ||
+            (filterBanned === "banned"  &&  c.banned);
+        return matchSearch && matchBan;
+    });
+
+    const handleBan = async () => {
+        if (!selectedCustomer) return;
+        setActionLoading(true);
+        try {
+            await api.put(`/users/${selectedCustomer.id}/ban`, { reason: banReason.trim() || null });
+            toast.success(`Đã khóa tài khoản ${selectedCustomer.full_name || selectedCustomer.username}`);
+            setBanOpen(false);
+            setBanReason("");
+            await fetchCustomers();
+        } catch (err: unknown) {
+            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+                || "Lỗi khi khóa tài khoản";
+            toast.error(msg);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleUnban = async () => {
+        if (!selectedCustomer) return;
+        setActionLoading(true);
+        try {
+            await api.put(`/users/${selectedCustomer.id}/unban`);
+            toast.success(`Đã mở khóa tài khoản ${selectedCustomer.full_name || selectedCustomer.username}`);
+            setUnbanOpen(false);
+            await fetchCustomers();
+        } catch (err: unknown) {
+            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+                || "Lỗi khi mở khóa";
+            toast.error(msg);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const stats = {
+        total:  customers.length,
+        active: customers.filter((c) => !c.banned).length,
+        banned: customers.filter((c) =>  c.banned).length,
+    };
+
+    if (loading) {
+        return (
+            <div className="space-y-4">
+                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-3">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 pt-3 px-4">
+                        <CardTitle className="text-xs font-medium text-muted-foreground">Tổng khách hàng</CardTitle>
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                        <div className="text-2xl font-bold">{stats.total}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 pt-3 px-4">
+                        <CardTitle className="text-xs font-medium text-muted-foreground">Đang hoạt động</CardTitle>
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                        <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 pt-3 px-4">
+                        <CardTitle className="text-xs font-medium text-muted-foreground">Đã bị khóa</CardTitle>
+                        <Ban className="h-4 w-4 text-red-500" />
+                    </CardHeader>
+                    <CardContent className="px-4 pb-3">
+                        <div className="text-2xl font-bold text-red-600">{stats.banned}</div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Toolbar */}
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+                <div className="relative flex-1 max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Tìm theo tên, username, email, SĐT..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                    />
+                </div>
+                <Select value={filterBanned} onValueChange={(v) => setFilterBanned(v as "all" | "active" | "banned")}>
+                    <SelectTrigger className="w-44">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Tất cả</SelectItem>
+                        <SelectItem value="active">Đang hoạt động</SelectItem>
+                        <SelectItem value="banned">Đã bị khóa</SelectItem>
+                    </SelectContent>
+                </Select>
+                <Button variant="outline" size="icon" onClick={fetchCustomers} title="Làm mới">
+                    <RefreshCw className="h-4 w-4" />
+                </Button>
+            </div>
+
+            {/* Table */}
+            {filtered.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 border rounded-lg text-center gap-3">
+                    <UserX className="h-10 w-10 text-muted-foreground" />
+                    <p className="text-muted-foreground text-sm">Không tìm thấy khách hàng nào</p>
+                </div>
+            ) : (
+                <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Khách hàng</TableHead>
+                                <TableHead>Email / SĐT</TableHead>
+                                <TableHead>Xác thực</TableHead>
+                                <TableHead>Trạng thái</TableHead>
+                                <TableHead>Ngày tạo</TableHead>
+                                <TableHead className="text-center w-28">Thao tác</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filtered.map((c) => (
+                                <TableRow
+                                    key={c.id}
+                                    className={`cursor-pointer hover:bg-muted/50 ${c.banned ? "bg-red-50/50" : ""}`}
+                                    onClick={() => { setSelectedCustomer(c); setDetailOpen(true); }}
+                                >
+                                    <TableCell>
+                                        <div className="flex items-center gap-3">
+                                            <Avatar>
+                                                <AvatarImage src={resolveAvatarSrc(c.avatar_url)} />
+                                                <AvatarFallback className={`text-sm font-medium ${c.banned ? "bg-red-100 text-red-600" : "bg-primary/10 text-primary"}`}>
+                                                    {getInitials(c.full_name)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="font-medium leading-tight">{c.full_name || "—"}</p>
+                                                <p className="text-xs text-muted-foreground">@{c.username}</p>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="text-xs space-y-0.5">
+                                            {c.email && <p className="flex items-center gap-1 text-muted-foreground"><Mail className="h-3 w-3 shrink-0" />{c.email}</p>}
+                                            {c.phone_number && <p className="flex items-center gap-1 text-muted-foreground"><Phone className="h-3 w-3 shrink-0" />{c.phone_number}</p>}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        {c.email_verified
+                                            ? <Badge className="gap-1 bg-green-500/10 text-green-700 border-green-500/20"><CheckCircle className="h-3 w-3" />Xác thực</Badge>
+                                            : <Badge className="bg-yellow-500/10 text-yellow-700 border-yellow-500/20">Chưa xác thực</Badge>
+                                        }
+                                    </TableCell>
+                                    <TableCell>
+                                        {c.banned
+                                            ? <Badge className="gap-1 bg-red-500/10 text-red-700 border-red-500/20"><Ban className="h-3 w-3" />Đã khóa</Badge>
+                                            : <Badge className="bg-green-500/10 text-green-700 border-green-500/20">Hoạt động</Badge>
+                                        }
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">{formatDate(c.created_at)}</TableCell>
+                                    <TableCell onClick={(e) => e.stopPropagation()}>
+                                        <div className="flex items-center justify-center gap-1">
+                                            {c.banned ? (
+                                                <Button
+                                                    variant="ghost" size="sm"
+                                                    className="text-green-600 hover:text-green-700 hover:bg-green-50 gap-1 text-xs"
+                                                    title="Mở khóa"
+                                                    onClick={() => { setSelectedCustomer(c); setUnbanOpen(true); }}
+                                                >
+                                                    <CheckCircle className="h-3.5 w-3.5" />Mở khóa
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    variant="ghost" size="sm"
+                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 gap-1 text-xs"
+                                                    title="Khóa tài khoản"
+                                                    onClick={() => { setSelectedCustomer(c); setBanReason(""); setBanOpen(true); }}
+                                                >
+                                                    <Ban className="h-3.5 w-3.5" />Khóa
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            )}
+
+            {/* Ban Dialog */}
+            <AlertDialog open={banOpen} onOpenChange={setBanOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                            <Ban className="h-5 w-5" />
+                            Khóa tài khoản khách hàng
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Bạn có chắc muốn khóa tài khoản của{" "}
+                            <strong>{selectedCustomer?.full_name || selectedCustomer?.username}</strong>?
+                            Họ sẽ không thể đăng nhập cho đến khi được mở khóa.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="px-1 pb-2">
+                        <Label htmlFor="ban-reason" className="text-sm font-medium">Lý do khóa (tuỳ chọn)</Label>
+                        <Textarea
+                            id="ban-reason"
+                            placeholder="Ví dụ: Vi phạm quy định đặt bàn nhiều lần..."
+                            value={banReason}
+                            onChange={(e) => setBanReason(e.target.value)}
+                            className="mt-1.5 resize-none"
+                            rows={3}
+                        />
+                    </div>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Hủy</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleBan}
+                            disabled={actionLoading}
+                            className="bg-red-600 text-white hover:bg-red-700"
+                        >
+                            {actionLoading ? "Đang xử lý..." : "Xác nhận khóa"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Unban Dialog */}
+            <AlertDialog open={unbanOpen} onOpenChange={setUnbanOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-green-600">
+                            <CheckCircle className="h-5 w-5" />
+                            Mở khóa tài khoản
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Mở khóa tài khoản của{" "}
+                            <strong>{selectedCustomer?.full_name || selectedCustomer?.username}</strong>?
+                            Họ sẽ có thể đăng nhập bình thường trở lại.
+                            {selectedCustomer?.ban_reason && (
+                                <span className="block mt-2 text-xs text-muted-foreground">
+                                    Lý do khóa trước: {selectedCustomer.ban_reason}
+                                </span>
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Hủy</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleUnban}
+                            disabled={actionLoading}
+                            className="bg-green-600 text-white hover:bg-green-700"
+                        >
+                            {actionLoading ? "Đang xử lý..." : "Mở khóa"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Detail Dialog */}
+            <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Thông tin khách hàng</DialogTitle>
+                    </DialogHeader>
+                    {selectedCustomer && (
+                        <div className="space-y-5">
+                            <div className="flex items-center gap-4">
+                                <Avatar className="h-14 w-14">
+                                    <AvatarImage src={resolveAvatarSrc(selectedCustomer.avatar_url)} />
+                                    <AvatarFallback className={selectedCustomer.banned ? "bg-red-100 text-red-600 text-lg font-semibold" : "bg-primary/10 text-primary text-lg font-semibold"}>
+                                        {getInitials(selectedCustomer.full_name)}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <h3 className="font-semibold text-base">{selectedCustomer.full_name || "—"}</h3>
+                                    <p className="text-sm text-muted-foreground">@{selectedCustomer.username}</p>
+                                    <div className="flex gap-2 mt-1">
+                                        <Badge className="bg-gray-500/10 text-gray-600 border-gray-500/20 gap-1">
+                                            <Users className="h-3 w-3" />CUSTOMER
+                                        </Badge>
+                                        {selectedCustomer.banned && (
+                                            <Badge className="bg-red-500/10 text-red-700 border-red-500/20 gap-1">
+                                                <Ban className="h-3 w-3" />Đã khóa
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <Separator />
+                            <div className="space-y-2 text-sm">
+                                {selectedCustomer.email && (
+                                    <div className="flex items-center gap-3">
+                                        <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                                        <span>{selectedCustomer.email}</span>
+                                        {selectedCustomer.email_verified && <Badge className="text-xs bg-green-500/10 text-green-700">✓ Xác thực</Badge>}
+                                    </div>
+                                )}
+                                {selectedCustomer.phone_number && (
+                                    <div className="flex items-center gap-3">
+                                        <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                                        <span>{selectedCustomer.phone_number}</span>
+                                    </div>
+                                )}
+                                {selectedCustomer.address && (
+                                    <div className="flex items-center gap-3">
+                                        <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                                        <span>{selectedCustomer.address}</span>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-3">
+                                    <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                                    <span>Tham gia: {formatDate(selectedCustomer.created_at)}</span>
+                                </div>
+                                {selectedCustomer.banned && selectedCustomer.ban_reason && (
+                                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
+                                        <p className="text-xs font-semibold text-red-700 mb-1">Lý do bị khóa:</p>
+                                        <p className="text-sm text-red-600">{selectedCustomer.ban_reason}</p>
+                                        {selectedCustomer.banned_at && (
+                                            <p className="text-xs text-red-400 mt-1">Khóa lúc: {formatDate(selectedCustomer.banned_at)}</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setDetailOpen(false)}>Đóng</Button>
+                        {selectedCustomer && (
+                            selectedCustomer.banned ? (
+                                <Button
+                                    className="bg-green-600 hover:bg-green-700 text-white gap-1"
+                                    onClick={() => { setDetailOpen(false); setUnbanOpen(true); }}
+                                >
+                                    <CheckCircle className="h-4 w-4" />Mở khóa
+                                </Button>
+                            ) : (
+                                <Button
+                                    variant="destructive"
+                                    className="gap-1"
+                                    onClick={() => { setDetailOpen(false); setBanReason(""); setBanOpen(true); }}
+                                >
+                                    <Ban className="h-4 w-4" />Khóa tài khoản
+                                </Button>
+                            )
+                        )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function StaffManagementPage() {
     const [users, setUsers]   = useState<User[]>([]);
@@ -219,7 +647,6 @@ export default function StaffManagementPage() {
             setLoading(true);
             setError(null);
 
-            // /api/users/roles is routed via the existing /api/users/** gateway route
             const [usersRes, rolesRes] = await Promise.all([
                 api.get("/users"),
                 api.get("/users/roles"),
@@ -229,7 +656,6 @@ export default function StaffManagementPage() {
             const staffRoles = allRoles.filter((r) =>
                 STAFF_ROLE_NAMES.includes((r.name || "").toUpperCase())
             );
-            // Fallback to hardcoded roles if API fails or returns empty
             setRoles(
                 staffRoles.length > 0
                     ? staffRoles
@@ -285,6 +711,7 @@ export default function StaffManagementPage() {
                 age:         form.age ? parseInt(form.age) : null,
                 email:       form.email || null,
                 address:     form.address || null,
+                avatarUrl:   form.avatarUrl || null,
             });
             toast.success("Tạo nhân viên thành công");
             setCreateOpen(false);
@@ -315,6 +742,7 @@ export default function StaffManagementPage() {
                 age:         form.age ? parseInt(form.age) : null,
                 email:       form.email || null,
                 address:     form.address || null,
+                avatarUrl:   form.avatarUrl || null,
             });
             toast.success("Cập nhật nhân viên thành công");
             setEditOpen(false);
@@ -340,7 +768,6 @@ export default function StaffManagementPage() {
 
         setFormLoading(true);
         try {
-            // Password is BCrypt-hashed server-side in UserService.updateUser()
             await api.put(`/users/${selectedUser.id}`, { password: newPwd });
             toast.success("Đổi mật khẩu thành công");
             setPwdOpen(false);
@@ -394,6 +821,7 @@ export default function StaffManagementPage() {
             age:             u.age ? String(u.age) : "",
             email:           u.email || "",
             address:         u.address || "",
+            avatarUrl:       u.avatar_url || "",
         });
         setEditOpen(true);
     };
@@ -424,9 +852,75 @@ export default function StaffManagementPage() {
         })),
     };
 
+    // ─── Avatar upload ────────────────────────────────────────────────────────
+    const avatarInputRef = useRef<HTMLInputElement>(null);
+    const [avatarUploading, setAvatarUploading] = useState(false);
+
+    const handleAvatarUpload = async (file: File) => {
+        if (!file.type.startsWith("image/")) return toast.error("Chỉ chấp nhận file ảnh");
+        if (file.size > 5 * 1024 * 1024) return toast.error("Ảnh không được vượt quá 5MB");
+        setAvatarUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append("image", file);
+            const res = await api.post("/images/upload/users", fd, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            patch({ avatarUrl: res.data.url });
+            toast.success("Tải ảnh thành công");
+        } catch {
+            toast.error("Tải ảnh thất bại, vui lòng thử lại");
+        } finally {
+            setAvatarUploading(false);
+        }
+    };
+
     // ─── Shared info fields (create & edit) ───────────────────────────────────
     const renderInfoFields = (idPrefix: string) => (
         <div className="space-y-4">
+            {/* Avatar upload */}
+            <div className="flex flex-col items-center gap-2">
+                <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleAvatarUpload(f); e.target.value = ""; }}
+                />
+                <div className="relative">
+                    <Avatar className="h-20 w-20">
+                        <AvatarImage
+                            src={resolveAvatarSrc(form.avatarUrl)}
+                        />
+                        <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">
+                            {getInitials(form.fullName || "?")}
+                        </AvatarFallback>
+                    </Avatar>
+                    <button
+                        type="button"
+                        disabled={avatarUploading}
+                        onClick={() => avatarInputRef.current?.click()}
+                        className="absolute -bottom-1 -right-1 p-1.5 bg-white border border-border rounded-full shadow hover:bg-muted transition-colors"
+                        title="Tải ảnh đại diện"
+                    >
+                        {avatarUploading ? (
+                            <svg className="animate-spin h-3.5 w-3.5 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                            </svg>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                        )}
+                    </button>
+                </div>
+                {form.avatarUrl && (
+                    <button type="button" onClick={() => patch({ avatarUrl: "" })} className="text-xs text-muted-foreground hover:text-destructive">
+                        Xóa ảnh
+                    </button>
+                )}
+            </div>
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <Label htmlFor={`${idPrefix}-fullName`}>Họ và tên *</Label>
@@ -521,176 +1015,197 @@ export default function StaffManagementPage() {
     // ─── Render ───────────────────────────────────────────────────────────────
     return (
         <div className="space-y-6">
+            <Tabs defaultValue="staff">
+                <TabsList className="mb-4">
+                    <TabsTrigger value="staff" className="gap-2">
+                        <UserCog className="h-4 w-4" />
+                        Nhân viên
+                    </TabsTrigger>
+                    <TabsTrigger value="customers" className="gap-2">
+                        <Users className="h-4 w-4" />
+                        Khách hàng
+                    </TabsTrigger>
+                </TabsList>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2 pt-3 px-4">
-                        <CardTitle className="text-xs font-medium text-muted-foreground">Tổng</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent className="px-4 pb-3">
-                        <div className="text-2xl font-bold">{stats.total}</div>
-                    </CardContent>
-                </Card>
-                {stats.byRole.map(({ name, count }) => (
-                    <Card key={name}>
-                        <CardHeader className="flex flex-row items-center justify-between pb-2 pt-3 px-4">
-                            <CardTitle className="text-xs font-medium text-muted-foreground">{name}</CardTitle>
-                            <span className={`rounded-full p-1 ${ROLE_COLORS[name]}`}>
-                                {getRoleIcon(name)}
-                            </span>
-                        </CardHeader>
-                        <CardContent className="px-4 pb-3">
-                            <div className={`text-2xl font-bold ${
-                                name === "ADMIN"   ? "text-red-600"    :
-                                name === "MANAGER" ? "text-purple-600" :
-                                name === "CASHIER" ? "text-green-600"  :
-                                name === "KITCHEN" ? "text-orange-600" : "text-blue-600"
-                            }`}>{count}</div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-
-            {/* Toolbar */}
-            <div className="flex flex-col md:flex-row md:items-center gap-4">
-                <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Tìm theo tên, username, email..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10"
-                    />
-                </div>
-                <Select value={filterRole} onValueChange={setFilterRole}>
-                    <SelectTrigger className="w-44">
-                        <SelectValue placeholder="Vai trò" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Tất cả vai trò</SelectItem>
-                        {roles.map((r) => (
-                            <SelectItem key={r.id} value={String(r.id)}>
-                                {r.name}
-                            </SelectItem>
+                {/* ══ TAB NHÂN VIÊN ══════════════════════════════════════════ */}
+                <TabsContent value="staff" className="space-y-6 mt-0">
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-3 px-4">
+                                <CardTitle className="text-xs font-medium text-muted-foreground">Tổng</CardTitle>
+                                <Users className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent className="px-4 pb-3">
+                                <div className="text-2xl font-bold">{stats.total}</div>
+                            </CardContent>
+                        </Card>
+                        {stats.byRole.map(({ name, count }) => (
+                            <Card key={name}>
+                                <CardHeader className="flex flex-row items-center justify-between pb-2 pt-3 px-4">
+                                    <CardTitle className="text-xs font-medium text-muted-foreground">{name}</CardTitle>
+                                    <span className={`rounded-full p-1 ${ROLE_COLORS[name]}`}>
+                                        {getRoleIcon(name)}
+                                    </span>
+                                </CardHeader>
+                                <CardContent className="px-4 pb-3">
+                                    <div className={`text-2xl font-bold ${
+                                        name === "ADMIN"   ? "text-red-600"    :
+                                        name === "MANAGER" ? "text-purple-600" :
+                                        name === "CASHIER" ? "text-green-600"  :
+                                        name === "KITCHEN" ? "text-orange-600" : "text-blue-600"
+                                    }`}>{count}</div>
+                                </CardContent>
+                            </Card>
                         ))}
-                    </SelectContent>
-                </Select>
-                <div className="flex gap-2 ml-auto">
-                    <Button variant="outline" size="icon" onClick={fetchData} title="Làm mới">
-                        <RefreshCw className="h-4 w-4" />
-                    </Button>
-                    <Button onClick={openCreate}>
-                        <Plus className="h-4 w-4 mr-1" />
-                        Thêm nhân viên
-                    </Button>
-                </div>
-            </div>
+                    </div>
 
-            {/* Error */}
-            {error && (
-                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex justify-between items-center">
-                    <p className="text-sm text-destructive">{error}</p>
-                    <Button variant="outline" size="sm" onClick={fetchData}>Thử lại</Button>
-                </div>
-            )}
+                    {/* Toolbar */}
+                    <div className="flex flex-col md:flex-row md:items-center gap-4">
+                        <div className="relative flex-1 max-w-md">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Tìm theo tên, username, email..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
+                        <Select value={filterRole} onValueChange={setFilterRole}>
+                            <SelectTrigger className="w-44">
+                                <SelectValue placeholder="Vai trò" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Tất cả vai trò</SelectItem>
+                                {roles.map((r) => (
+                                    <SelectItem key={r.id} value={String(r.id)}>
+                                        {r.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <div className="flex gap-2 ml-auto">
+                            <Button variant="outline" size="icon" onClick={fetchData} title="Làm mới">
+                                <RefreshCw className="h-4 w-4" />
+                            </Button>
+                            <Button onClick={openCreate}>
+                                <Plus className="h-4 w-4 mr-1" />
+                                Thêm nhân viên
+                            </Button>
+                        </div>
+                    </div>
 
-            {/* Table */}
-            {filteredUsers.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 border rounded-lg text-center gap-3">
-                    <Users className="h-10 w-10 text-muted-foreground" />
-                    <p className="text-muted-foreground text-sm">
-                        {searchQuery || filterRole !== "all"
-                            ? "Không tìm thấy nhân viên nào"
-                            : "Chưa có nhân viên nào"}
-                    </p>
-                    <Button variant="outline" size="sm" onClick={openCreate}>
-                        <Plus className="h-4 w-4 mr-1" />
-                        Thêm nhân viên
-                    </Button>
-                </div>
-            ) : (
-                <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Nhân viên</TableHead>
-                                <TableHead>Tài khoản</TableHead>
-                                <TableHead>Vai trò</TableHead>
-                                <TableHead>Liên hệ</TableHead>
-                                <TableHead>Ngày tạo</TableHead>
-                                <TableHead className="text-center w-36">Thao tác</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredUsers.map((u) => (
-                                <TableRow
-                                    key={u.id}
-                                    className="cursor-pointer hover:bg-muted/50"
-                                    onClick={() => openDetail(u)}
-                                >
-                                    <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <Avatar>
-                                                <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                                                    {getInitials(u.full_name)}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <p className="font-medium leading-tight">{u.full_name || "—"}</p>
-                                                {u.age ? <p className="text-xs text-muted-foreground">{u.age} tuổi</p> : null}
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground text-sm">@{u.username}</TableCell>
-                                    <TableCell>
-                                        <Badge className={`gap-1 ${getRoleBadgeColor(u.role_name)}`}>
-                                            {getRoleIcon(u.role_name)}
-                                            {u.role_name}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="text-xs space-y-0.5">
-                                            {u.email && (
-                                                <p className="flex items-center gap-1 text-muted-foreground">
-                                                    <Mail className="h-3 w-3 shrink-0" />{u.email}
-                                                </p>
-                                            )}
-                                            {u.phone_number && (
-                                                <p className="flex items-center gap-1 text-muted-foreground">
-                                                    <Phone className="h-3 w-3 shrink-0" />{u.phone_number}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground text-sm">
-                                        {formatDate(u.created_at)}
-                                    </TableCell>
-                                    <TableCell onClick={(e) => e.stopPropagation()}>
-                                        <div className="flex items-center justify-center gap-1">
-                                            <Button variant="ghost" size="icon" title="Chỉnh sửa" onClick={() => openEdit(u)}>
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" title="Đổi mật khẩu" onClick={() => openPwd(u)}>
-                                                <KeyRound className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost" size="icon"
-                                                title="Xóa"
-                                                className="text-destructive hover:text-destructive"
-                                                onClick={() => openDelete(u)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            )}
+                    {/* Error */}
+                    {error && (
+                        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex justify-between items-center">
+                            <p className="text-sm text-destructive">{error}</p>
+                            <Button variant="outline" size="sm" onClick={fetchData}>Thử lại</Button>
+                        </div>
+                    )}
+
+                    {/* Table */}
+                    {filteredUsers.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 border rounded-lg text-center gap-3">
+                            <Users className="h-10 w-10 text-muted-foreground" />
+                            <p className="text-muted-foreground text-sm">
+                                {searchQuery || filterRole !== "all"
+                                    ? "Không tìm thấy nhân viên nào"
+                                    : "Chưa có nhân viên nào"}
+                            </p>
+                            <Button variant="outline" size="sm" onClick={openCreate}>
+                                <Plus className="h-4 w-4 mr-1" />
+                                Thêm nhân viên
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="border rounded-lg overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Nhân viên</TableHead>
+                                        <TableHead>Tài khoản</TableHead>
+                                        <TableHead>Vai trò</TableHead>
+                                        <TableHead>Liên hệ</TableHead>
+                                        <TableHead>Ngày tạo</TableHead>
+                                        <TableHead className="text-center w-36">Thao tác</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredUsers.map((u) => (
+                                        <TableRow
+                                            key={u.id}
+                                            className="cursor-pointer hover:bg-muted/50"
+                                            onClick={() => openDetail(u)}
+                                        >
+                                            <TableCell>
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar>
+                                                        <AvatarImage src={resolveAvatarSrc(u.avatar_url)} />
+                                                        <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                                                            {getInitials(u.full_name)}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div>
+                                                        <p className="font-medium leading-tight">{u.full_name || "—"}</p>
+                                                        {u.age ? <p className="text-xs text-muted-foreground">{u.age} tuổi</p> : null}
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground text-sm">@{u.username}</TableCell>
+                                            <TableCell>
+                                                <Badge className={`gap-1 ${getRoleBadgeColor(u.role_name)}`}>
+                                                    {getRoleIcon(u.role_name)}
+                                                    {u.role_name}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="text-xs space-y-0.5">
+                                                    {u.email && (
+                                                        <p className="flex items-center gap-1 text-muted-foreground">
+                                                            <Mail className="h-3 w-3 shrink-0" />{u.email}
+                                                        </p>
+                                                    )}
+                                                    {u.phone_number && (
+                                                        <p className="flex items-center gap-1 text-muted-foreground">
+                                                            <Phone className="h-3 w-3 shrink-0" />{u.phone_number}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground text-sm">
+                                                {formatDate(u.created_at)}
+                                            </TableCell>
+                                            <TableCell onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <Button variant="ghost" size="icon" title="Chỉnh sửa" onClick={() => openEdit(u)}>
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" title="Đổi mật khẩu" onClick={() => openPwd(u)}>
+                                                        <KeyRound className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost" size="icon"
+                                                        title="Xóa"
+                                                        className="text-destructive hover:text-destructive"
+                                                        onClick={() => openDelete(u)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                </TabsContent>
+
+                {/* ══ TAB KHÁCH HÀNG ═════════════════════════════════════════ */}
+                <TabsContent value="customers" className="mt-0">
+                    <CustomerTab />
+                </TabsContent>
+            </Tabs>
 
             {/* ── Create Dialog ─────────────────────────────────────────────── */}
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -848,6 +1363,7 @@ export default function StaffManagementPage() {
                         <div className="space-y-5">
                             <div className="flex items-center gap-4">
                                 <Avatar className="h-14 w-14">
+                                    <AvatarImage src={resolveAvatarSrc(selectedUser.avatar_url)} />
                                     <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
                                         {getInitials(selectedUser.full_name)}
                                     </AvatarFallback>

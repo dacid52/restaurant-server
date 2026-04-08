@@ -14,7 +14,11 @@ public class UserDto {
     private Integer age;
     private String email;
     private String address;
+    private String avatarUrl;
     private boolean emailVerified;
+    private boolean banned;
+    private String banReason;
+    private LocalDateTime bannedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

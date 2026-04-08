@@ -11,4 +11,5 @@ public class UserUpdateRequest {
     private String email;
     private String address;
     private String password;
+    private String avatarUrl;
 }

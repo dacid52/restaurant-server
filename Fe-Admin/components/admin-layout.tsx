@@ -63,7 +63,7 @@ const menuItems = [
         icon: ClipboardList,
     },
     {
-        title: "Nhân viên",
+        title: "Nhân viên & Customer",
         url: "/staff",
         icon: Users,
     },

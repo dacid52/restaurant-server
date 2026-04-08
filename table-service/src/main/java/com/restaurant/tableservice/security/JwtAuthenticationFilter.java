@@ -108,7 +108,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private boolean isCustomerAllowed(String path, String method) {
         return ("POST".equals(method) && path.matches("/api/tables/\\d+/reservations"))
-                || path.endsWith("/reservations/my");
+                || path.endsWith("/reservations/my")
+                || ("PUT".equals(method) && path.matches("/api/tables/reservations/\\d+/cancel"));
     }
 
     private boolean isTrustedInternalCall(HttpServletRequest request) {

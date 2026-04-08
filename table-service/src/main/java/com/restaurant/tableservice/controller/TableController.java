@@ -72,6 +72,20 @@ public class TableController {
         return ResponseEntity.ok(tableService.getMyReservations(customerId));
     }
 
+    /** Khách tự hủy đơn của mình (pending / confirmed). */
+    @PutMapping("/reservations/{reservationId}/cancel")
+    public ResponseEntity<?> cancelMyReservation(
+            @PathVariable @NonNull Integer reservationId,
+            HttpServletRequest request) {
+        Object userIdAttr = request.getAttribute("userId");
+        if (userIdAttr == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(java.util.Map.of("error", "Bạn cần đăng nhập để hủy đặt bàn"));
+        }
+        Integer customerId = ((Number) userIdAttr).intValue();
+        return ResponseEntity.ok(tableService.cancelMyReservation(reservationId, customerId));
+    }
+
     @GetMapping("/reservations")
     public ResponseEntity<List<com.restaurant.tableservice.entity.TableReservation>> getAllReservations(
             @RequestParam(required = false) String status) {
