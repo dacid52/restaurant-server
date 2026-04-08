@@ -5,6 +5,7 @@ import { CalendarClock, CheckCircle2, XCircle, RefreshCw, LogIn, ListChecks, Use
 import { toast } from 'sonner';
 import api from '@/lib/axios';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -79,11 +80,23 @@ const STATUS_BADGE: Record<string, string> = {
   no_show: 'bg-gray-100 text-gray-700 border-gray-200',
 };
 
+const toLocalYyyyMmDd = (iso: string): string => {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
 export default function ReservationsPage() {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState('pending');
-  // allReservations: luôn fetch tất cả để đếm chính xác; reservations: đã lọc hiển thị
+  const [filterDate, setFilterDate] = useState<string>(
+    new Date().toLocaleDateString('en-CA')
+  );
+  // allReservations: dữ liệu gốc từ API
   const [allReservations, setAllReservations] = useState<Reservation[]>([]);
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [checkinResult, setCheckinResult] = useState<CheckinResult | null>(null);
@@ -94,10 +107,18 @@ export default function ReservationsPage() {
     return map;
   }, [tables]);
 
+  const dateFilteredReservations = useMemo(() => {
+    return allReservations.filter((r) => {
+      if (!filterDate) return true;
+      const reservationDateStr = toLocalYyyyMmDd(r.start_time);
+      return reservationDateStr === filterDate;
+    });
+  }, [allReservations, filterDate]);
+
   const reservations = useMemo(() => {
-    if (statusFilter === 'all') return allReservations;
-    return allReservations.filter((r) => r.status === statusFilter);
-  }, [allReservations, statusFilter]);
+    if (statusFilter === 'all') return dateFilteredReservations;
+    return dateFilteredReservations.filter((r) => r.status === statusFilter);
+  }, [dateFilteredReservations, statusFilter]);
 
   const formatDateTime = (iso: string) => {
     const d = new Date(iso);
@@ -197,9 +218,9 @@ export default function ReservationsPage() {
     }
   };
 
-  const pendingCount = allReservations.filter((r) => r.status === 'pending').length;
-  const confirmedCount = allReservations.filter((r) => r.status === 'confirmed').length;
-  const servingCount = allReservations.filter((r) => r.status === 'serving').length;
+  const pendingCount = dateFilteredReservations.filter((r) => r.status === 'pending').length;
+  const confirmedCount = dateFilteredReservations.filter((r) => r.status === 'confirmed').length;
+  const servingCount = dateFilteredReservations.filter((r) => r.status === 'serving').length;
 
   return (
     <div className="space-y-5">
@@ -211,6 +232,12 @@ export default function ReservationsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Input
+            type="date"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            className="w-auto"
+          />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[190px]">
               <SelectValue placeholder="Lọc trạng thái" />
@@ -234,7 +261,7 @@ export default function ReservationsPage() {
         <Card>
           <CardContent className="pt-5">
             <p className="text-sm text-muted-foreground">Tổng đơn</p>
-            <p className="text-2xl font-bold">{allReservations.length}</p>
+            <p className="text-2xl font-bold">{dateFilteredReservations.length}</p>
           </CardContent>
         </Card>
         <Card>
