@@ -10,6 +10,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  allowedDevOrigins: ['restaurant-server.site'],
   async rewrites() {
     return [
       {

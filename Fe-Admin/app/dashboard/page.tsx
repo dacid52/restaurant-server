@@ -362,7 +362,6 @@ export default function AdminDashboard() {
 
   const [periodType, setPeriodType] = useState<PeriodType>("day");
   const [exportRevenue, setExportRevenue] = useState(true);
-  const [exportTopFoods, setExportTopFoods] = useState(true);
   const [exporting, setExporting] = useState(false);
 
   const [rawOrders, setRawOrders] = useState<Order[]>([]);
@@ -469,15 +468,6 @@ export default function AdminDashboard() {
   }, [rawOrders, rawFoods, rawTables, rawPayments, periodType, recalculateDashboard]);
 
   const handleExportExcel = async () => {
-    if (!exportRevenue && !exportTopFoods) {
-      toast({
-        title: "Thiếu dữ liệu xuất",
-        description: "Vui lòng chọn ít nhất 1 mục: Doanh thu hoặc Top món bán chạy.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       setExporting(true);
       const workbook = XLSX.utils.book_new();
@@ -493,23 +483,12 @@ export default function AdminDashboard() {
       const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
       XLSX.utils.book_append_sheet(workbook, summarySheet, "Tong quan");
 
-      if (exportRevenue) {
-        const rows = revenueData.map((item) => ({
-          Ky: item.date,
-          DoanhThu: item.revenue,
-        }));
-        const sheet = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Ky: "", DoanhThu: 0 }]);
-        XLSX.utils.book_append_sheet(workbook, sheet, "Doanh thu");
-      }
-
-      if (exportTopFoods) {
-        const rows = topFoods.map((item) => ({
-          Mon: item.name,
-          SoLuongBan: item.quantity,
-        }));
-        const sheet = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Mon: "", SoLuongBan: 0 }]);
-        XLSX.utils.book_append_sheet(workbook, sheet, "Top mon");
-      }
+      const rows = revenueData.map((item) => ({
+        Ky: item.date,
+        DoanhThu: item.revenue,
+      }));
+      const sheet = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Ky: "", DoanhThu: 0 }]);
+      XLSX.utils.book_append_sheet(workbook, sheet, "Doanh thu");
 
       const fileName = `dashboard-${periodType}-${new Date().toISOString().slice(0, 10)}.xlsx`;
       XLSX.writeFile(workbook, fileName);
@@ -578,10 +557,6 @@ export default function AdminDashboard() {
               <Checkbox checked={exportRevenue} onCheckedChange={(v) => setExportRevenue(v === true)} id="cb-revenue" />
               <Label htmlFor="cb-revenue">Doanh thu</Label>
             </div>
-            <div className="flex items-center gap-2">
-              <Checkbox checked={exportTopFoods} onCheckedChange={(v) => setExportTopFoods(v === true)} id="cb-top-foods" />
-              <Label htmlFor="cb-top-foods">Biểu đồ món bán chạy</Label>
-            </div>
             <Button onClick={handleExportExcel} disabled={exporting}>
               <Download className="mr-2 h-4 w-4" />
               {exporting ? "Đang xuất..." : "Xuất Excel"}
@@ -633,70 +608,39 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Doanh thu theo {PERIOD_LABEL[periodType].toLowerCase()}
-            </CardTitle>
-            <CardDescription>Dữ liệu tổng hợp theo bộ lọc đang chọn</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={revenueChartConfig} className="h-[300px] w-full">
-              <LineChart data={revenueData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
-                  className="text-xs"
-                />
-                <ChartTooltip content={<ChartTooltipContent formatter={(value) => formatCurrency(Number(value))} />} />
-                <Line
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="var(--color-revenue)"
-                  strokeWidth={2}
-                  dot={{ fill: "var(--color-revenue)", r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UtensilsCrossed className="h-5 w-5" />
-              Top món bán chạy theo {PERIOD_LABEL[periodType].toLowerCase()}
-            </CardTitle>
-            <CardDescription>Top món theo số lượng gọi trong kỳ</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={topFoodsChartConfig} className="h-[300px] w-full">
-              <BarChart data={topFoods} layout="vertical" margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" horizontal={false} />
-                <XAxis type="number" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  width={120}
-                  className="text-xs"
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="quantity" fill="var(--color-quantity)" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Doanh thu theo {PERIOD_LABEL[periodType].toLowerCase()}
+          </CardTitle>
+          <CardDescription>Dữ liệu tổng hợp theo bộ lọc đang chọn</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={revenueChartConfig} className="h-[300px] w-full">
+            <LineChart data={revenueData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} className="text-xs" />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
+                className="text-xs"
+              />
+              <ChartTooltip content={<ChartTooltipContent formatter={(value) => formatCurrency(Number(value))} />} />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="var(--color-revenue)"
+                strokeWidth={2}
+                dot={{ fill: "var(--color-revenue)", r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="md:col-span-2">
